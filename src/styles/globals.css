@@ -1,0 +1,132 @@
+@import 'tailwindcss';
+
+/* ---------------------------------------------------------------------
+   Design tokens — "Quiet editorial precision"
+   Light-first paper/ink palette with a single restrained clay accent.
+   Dark mode is a deliberately separate palette, not an inversion.
+   ------------------------------------------------------------------- */
+
+:root {
+  --color-paper: #faf7f1;
+  --color-paper-raised: #f2ece1;
+  --color-paper-sunken: #ece4d6;
+  --color-ink: #201c16;
+  --color-ink-muted: #6b6255;
+  --color-ink-faint: #a89e8d;
+  --color-line: #e2d8c7;
+  --color-line-strong: #cabfa8;
+
+  --color-accent: #b5502f;
+  --color-accent-strong: #97401f;
+  --color-accent-soft: #f1ddc9;
+  --color-accent-ink: #fff8f0;
+
+  --color-positive: #4f6d4b;
+  --color-negative: #a3402f;
+
+  /* Theme-INVARIANT tokens for surfaces that should always look dark (e.g. the
+     Auth page hero panel) — deliberately not redefined in the dark-mode blocks
+     below, unlike --color-ink/--color-paper which are role tokens that swap. */
+  --color-fixed-dark: #17140f;
+  --color-fixed-dark-ink: #f2ece1;
+
+  --font-display: 'Newsreader', ui-serif, Georgia, serif;
+  --font-body: 'Manrope', ui-sans-serif, system-ui, sans-serif;
+}
+
+[data-theme='dark'] {
+  --color-paper: #17140f;
+  --color-paper-raised: #1f1b14;
+  --color-paper-sunken: #100e0a;
+  --color-ink: #f2ece1;
+  --color-ink-muted: #b6ab97;
+  --color-ink-faint: #756b5a;
+  --color-line: #322b20;
+  --color-line-strong: #453b2c;
+
+  --color-accent: #dd8158;
+  --color-accent-strong: #e89b76;
+  --color-accent-soft: #33261c;
+  --color-accent-ink: #1a1209;
+
+  --color-positive: #8fae86;
+  --color-negative: #d38571;
+}
+
+@media (prefers-color-scheme: dark) {
+  :root:not([data-theme='light']) {
+    --color-paper: #17140f;
+    --color-paper-raised: #1f1b14;
+    --color-paper-sunken: #100e0a;
+    --color-ink: #f2ece1;
+    --color-ink-muted: #b6ab97;
+    --color-ink-faint: #756b5a;
+    --color-line: #322b20;
+    --color-line-strong: #453b2c;
+
+    --color-accent: #dd8158;
+    --color-accent-strong: #e89b76;
+    --color-accent-soft: #33261c;
+    --color-accent-ink: #1a1209;
+
+    --color-positive: #8fae86;
+    --color-negative: #d38571;
+  }
+}
+
+@theme {
+  --color-paper: var(--color-paper);
+  --color-paper-raised: var(--color-paper-raised);
+  --color-paper-sunken: var(--color-paper-sunken);
+  --color-ink: var(--color-ink);
+  --color-ink-muted: var(--color-ink-muted);
+  --color-ink-faint: var(--color-ink-faint);
+  --color-line: var(--color-line);
+  --color-line-strong: var(--color-line-strong);
+
+  --color-accent: var(--color-accent);
+  --color-accent-strong: var(--color-accent-strong);
+  --color-accent-soft: var(--color-accent-soft);
+  --color-accent-ink: var(--color-accent-ink);
+
+  --color-positive: var(--color-positive);
+  --color-negative: var(--color-negative);
+
+  --color-fixed-dark: var(--color-fixed-dark);
+  --color-fixed-dark-ink: var(--color-fixed-dark-ink);
+
+  --font-display: var(--font-display);
+  --font-body: var(--font-body);
+}
+
+@layer base {
+  * {
+    border-color: var(--color-line);
+  }
+
+  html {
+    color-scheme: light dark;
+  }
+
+  body {
+    background-color: var(--color-paper);
+    color: var(--color-ink);
+    font-family: var(--font-body);
+    -webkit-font-smoothing: antialiased;
+  }
+
+  ::selection {
+    background-color: var(--color-accent-soft);
+    color: var(--color-accent-strong);
+  }
+}
+
+@layer utilities {
+  .font-display {
+    font-family: var(--font-display);
+  }
+
+  .nums-tabular {
+    font-variant-numeric: tabular-nums;
+  }
+}
