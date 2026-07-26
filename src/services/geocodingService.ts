@@ -40,9 +40,14 @@ export async function searchPlace(query: string): Promise<GeocodeResult[]> {
   url.searchParams.set('limit', '5')
   url.searchParams.set('email', CONTACT_EMAIL)
 
-  const res = await fetch(url.toString(), { headers: { Accept: 'application/json' } })
+  let res: Response
+  try {
+    res = await fetch(url.toString(), { headers: { Accept: 'application/json' } })
+  } catch {
+    throw new Error('Place search can\'t reach the network from here.')
+  }
   if (!res.ok) {
-    throw new Error('Place search is unavailable right now — enter coordinates manually below.')
+    throw new Error('Place search is unavailable right now.')
   }
 
   const data: Array<{ display_name: string; lat: string; lon: string }> = await res.json()

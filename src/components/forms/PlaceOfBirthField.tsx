@@ -18,6 +18,8 @@ export default function PlaceOfBirthField({ value, onChange }: PlaceOfBirthField
   const [query, setQuery] = useState(value?.label ?? '')
   const [results, setResults] = useState<GeocodeResult[]>([])
   const [searching, setSearching] = useState(false)
+  const [searched, setSearched] = useState(false)
+  const [searchError, setSearchError] = useState<string | null>(null)
   const [manualMode, setManualMode] = useState(false)
   const [manualLat, setManualLat] = useState(value ? String(value.lat) : '')
   const [manualLon, setManualLon] = useState(value ? String(value.lon) : '')
@@ -25,6 +27,8 @@ export default function PlaceOfBirthField({ value, onChange }: PlaceOfBirthField
 
   useEffect(() => {
     if (timer.current) clearTimeout(timer.current)
+    setSearchError(null)
+    setSearched(false)
     if (query.trim().length < 3 || (value && value.label === query)) {
       setResults([])
       return
@@ -33,10 +37,16 @@ export default function PlaceOfBirthField({ value, onChange }: PlaceOfBirthField
       setSearching(true)
       try {
         setResults(await searchPlace(query))
-      } catch {
+      } catch (err) {
         setResults([])
+        setSearchError(
+          err instanceof Error
+            ? err.message
+            : 'Search failed — this can happen if your network blocks outside requests.',
+        )
       } finally {
         setSearching(false)
+        setSearched(true)
       }
     }, 500)
     return () => {
@@ -49,6 +59,11 @@ export default function PlaceOfBirthField({ value, onChange }: PlaceOfBirthField
     setQuery(result.label)
     setResults([])
     onChange({ label: result.label, lat: result.lat, lon: result.lon })
+  }
+
+  function switchToManual() {
+    setManualMode(true)
+    setSearchError(null)
   }
 
   function detectLocation() {
@@ -72,6 +87,9 @@ export default function PlaceOfBirthField({ value, onChange }: PlaceOfBirthField
       onChange(null)
     }
   }
+
+  const showNoMatches =
+    !searching && searched && !searchError && results.length === 0 && query.trim().length >= 3
 
   return (
     <div className="relative">
@@ -121,6 +139,26 @@ export default function PlaceOfBirthField({ value, onChange }: PlaceOfBirthField
                 </li>
               ))}
             </ul>
+          )}
+
+          {searchError && (
+            <p className="mt-2 text-sm text-negative">
+              {searchError}{' '}
+              <button type="button" onClick={switchToManual} className="underline">
+                Switch to manual entry
+              </button>
+              .
+            </p>
+          )}
+
+          {showNoMatches && (
+            <p className="mt-2 text-sm text-ink-muted">
+              No matches for "{query}" —{' '}
+              <button type="button" onClick={switchToManual} className="text-accent underline">
+                enter coordinates manually
+              </button>{' '}
+              instead.
+            </p>
           )}
 
           <button
