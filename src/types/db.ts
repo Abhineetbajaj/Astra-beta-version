@@ -158,6 +158,17 @@ export interface MedicalReadingRow {
   created_at: string
 }
 
+export interface RashiHoroscopeRow {
+  id: string
+  rashi_index: number
+  horoscope_date: string
+  body: string
+  mood: string
+  lucky_number: number
+  lucky_color: string
+  created_at: string
+}
+
 export interface AstrologerRow {
   id: string
   name: string

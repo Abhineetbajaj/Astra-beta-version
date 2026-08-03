@@ -1,6 +1,6 @@
 import { NavLink, Outlet, useNavigate, useLocation } from 'react-router-dom'
 import { AnimatePresence, motion } from 'framer-motion'
-import { Compass, Heart, MessageCircle, Users, Clock, Sparkles, Wallet, LogOut, TrendingUp, HeartPulse } from 'lucide-react'
+import { Compass, Heart, MessageCircle, Users, Clock, Sparkles, Wallet, LogOut, TrendingUp, HeartPulse, Star } from 'lucide-react'
 import { useAuthStore } from '@/store/authStore'
 import { Badge } from '@/components/ui/Badge'
 import ThemeToggle from '@/components/ui/ThemeToggle'
@@ -11,6 +11,7 @@ const navItems = [
   { to: '/chart', label: 'Chart', icon: Compass },
   { to: '/compatibility', label: 'Compatibility', icon: Heart },
   { to: '/chat', label: 'Ask Astra', icon: MessageCircle },
+  { to: '/horoscope', label: 'Horoscope', icon: Star },
   { to: '/financial', label: 'Financial', icon: TrendingUp },
   { to: '/medical', label: 'Wellness', icon: HeartPulse },
   { to: '/astrologers', label: 'Astrologers', icon: Users },

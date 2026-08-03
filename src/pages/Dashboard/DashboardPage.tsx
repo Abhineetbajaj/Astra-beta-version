@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useState } from 'react'
+import { useCallback, useEffect, useMemo, useState } from 'react'
 import { Link } from 'react-router-dom'
 import { motion } from 'framer-motion'
 import { Compass, Heart, Briefcase, Eye, Sparkles, Lock, AlertCircle } from 'lucide-react'
@@ -6,6 +6,7 @@ import { useAuthStore } from '@/store/authStore'
 import { useNatalChart } from '@/lib/useNatalChart'
 import { callEdgeFunction } from '@/lib/edgeFunctions'
 import { currentDashaLords } from '@/astro-engine'
+import { computePanchang } from '@/astro-engine/panchang'
 import { RASHIS } from '@/data/rashis'
 import { Card } from '@/components/ui/Card'
 import { Skeleton } from '@/components/ui/Skeleton'
@@ -81,6 +82,8 @@ export default function DashboardPage() {
       .catch((err) => setWeeklyError(err instanceof Error ? err.message : 'Could not load the weekly report.'))
       .finally(() => setLoadingWeekly(false))
   }
+
+  const panchang = useMemo(() => computePanchang(new Date()), [])
 
   if (!selfBirthProfile) return null
 
@@ -163,6 +166,22 @@ export default function DashboardPage() {
           )}
         </div>
       </Card>
+
+      <div className="grid grid-cols-2 gap-3 sm:grid-cols-4">
+        {[
+          { label: 'Vara', value: panchang.vara },
+          { label: 'Tithi', value: `${panchang.tithi.name} (${panchang.tithi.paksha})` },
+          { label: 'Nakshatra', value: panchang.nakshatra.name },
+          { label: 'Yoga', value: panchang.yoga.name },
+        ].map((item) => (
+          <div key={item.label} className="rounded-xl border border-line px-3 py-2.5">
+            <p className="text-[10px] uppercase tracking-wide text-ink-faint">{item.label}</p>
+            <p className="mt-0.5 truncate text-sm text-ink" title={item.value}>
+              {item.value}
+            </p>
+          </div>
+        ))}
+      </div>
 
       {loadingReading && !reading && (
         <div className="grid gap-4 sm:grid-cols-2">
