@@ -1,20 +1,71 @@
-import { useState } from 'react'
+import { useEffect, useState } from 'react'
 import { Wallet as WalletIcon, ArrowUpRight, ArrowDownRight } from 'lucide-react'
-import { useWalletStore } from '@/store/walletStore'
+import { useAuthStore } from '@/store/authStore'
+import { supabase } from '@/lib/supabaseClient'
+import { callEdgeFunction } from '@/lib/edgeFunctions'
+import { openRazorpayCheckout } from '@/lib/razorpay'
 import { Card } from '@/components/ui/Card'
 import { Button } from '@/components/ui/Button'
+import type { WalletTransactionRow } from '@/types/db'
 
 const PACKAGES = [10, 25, 50, 100] as const
 const CREDIT_PRICE_INR = 10
 
 export default function WalletPage() {
-  const credits = useWalletStore((s) => s.credits)
-  const transactions = useWalletStore((s) => s.transactions)
-  const topUp = useWalletStore((s) => s.topUp)
+  const session = useAuthStore((s) => s.session)
+  const profile = useAuthStore((s) => s.profile)
+  const [transactions, setTransactions] = useState<WalletTransactionRow[]>([])
   const [custom, setCustom] = useState('')
+  const [buying, setBuying] = useState(false)
+  const [error, setError] = useState<string | null>(null)
+  const [notice, setNotice] = useState<string | null>(null)
 
-  function buy(amount: number) {
-    topUp(amount, `Top-up · ${amount} credits`)
+  async function loadTransactions() {
+    if (!session) return
+    const { data } = await supabase
+      .from('wallet_transactions')
+      .select('*')
+      .eq('user_id', session.user.id)
+      .order('created_at', { ascending: false })
+    setTransactions((data as WalletTransactionRow[]) ?? [])
+  }
+
+  useEffect(() => {
+    loadTransactions()
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [session])
+
+  const credits = transactions.reduce((sum, t) => sum + (t.type === 'topup' ? t.amount : -t.amount), 0)
+
+  async function buy(amount: number) {
+    if (!session) return
+    setError(null)
+    setNotice(null)
+    setBuying(true)
+    try {
+      const amountInPaise = amount * CREDIT_PRICE_INR * 100
+      const order = await callEdgeFunction<{ orderId: string; amount: number; currency: string; keyId: string }>(
+        'razorpay-create-order',
+        { purpose: 'wallet_topup', amountInPaise },
+      )
+      await openRazorpayCheckout({
+        orderId: order.orderId,
+        amount: order.amount,
+        currency: order.currency,
+        keyId: order.keyId,
+        name: 'Astra',
+        description: `${amount} credits`,
+        prefillEmail: profile?.email,
+        onSuccess: () => {
+          setNotice('Payment received — credits will appear shortly.')
+          setTimeout(loadTransactions, 2000)
+        },
+      })
+    } catch (err) {
+      setError(err instanceof Error ? err.message : 'Could not start checkout.')
+    } finally {
+      setBuying(false)
+    }
   }
 
   return (
@@ -34,13 +85,14 @@ export default function WalletPage() {
 
       <Card className="mt-4">
         <h2 className="font-display text-lg">Top up</h2>
-        <p className="mt-1 text-sm text-ink-muted">₹{CREDIT_PRICE_INR} per credit. No real payment is processed in this prototype.</p>
+        <p className="mt-1 text-sm text-ink-muted">₹{CREDIT_PRICE_INR} per credit, via Razorpay.</p>
         <div className="mt-4 grid grid-cols-2 gap-3 sm:grid-cols-4">
           {PACKAGES.map((amount) => (
             <button
               key={amount}
               onClick={() => buy(amount)}
-              className="rounded-xl border border-line-strong py-4 text-center hover:border-accent hover:bg-accent-soft"
+              disabled={buying}
+              className="rounded-xl border border-line-strong py-4 text-center hover:border-accent hover:bg-accent-soft disabled:opacity-50"
             >
               <p className="nums-tabular text-lg font-medium">{amount}</p>
               <p className="text-xs text-ink-faint">₹{amount * CREDIT_PRICE_INR}</p>
@@ -58,6 +110,7 @@ export default function WalletPage() {
           />
           <Button
             variant="outline"
+            disabled={buying}
             onClick={() => {
               const n = parseInt(custom, 10)
               if (n > 0) {
@@ -69,6 +122,8 @@ export default function WalletPage() {
             Add
           </Button>
         </div>
+        {notice && <p className="mt-3 text-sm text-positive">{notice}</p>}
+        {error && <p className="mt-3 text-sm text-negative">{error}</p>}
       </Card>
 
       <Card className="mt-4">
@@ -85,7 +140,7 @@ export default function WalletPage() {
                 <div>
                   <p>{t.label}</p>
                   <p className="text-xs text-ink-faint">
-                    {new Date(t.at).toLocaleDateString('en-US', {
+                    {new Date(t.created_at).toLocaleDateString('en-US', {
                       month: 'short',
                       day: 'numeric',
                       hour: 'numeric',
@@ -94,9 +149,7 @@ export default function WalletPage() {
                   </p>
                 </div>
               </div>
-              <span
-                className={`nums-tabular font-medium ${t.type === 'topup' ? 'text-positive' : 'text-negative'}`}
-              >
+              <span className={`nums-tabular font-medium ${t.type === 'topup' ? 'text-positive' : 'text-negative'}`}>
                 {t.type === 'topup' ? '+' : '-'}
                 {t.amount}
               </span>

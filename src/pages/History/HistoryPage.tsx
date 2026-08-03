@@ -1,52 +1,74 @@
-import { useMemo } from 'react'
+import { useEffect, useState } from 'react'
 import { useAuthStore } from '@/store/authStore'
-import { useChartStore } from '@/store/chartStore'
-import { generateDailyReading } from '@/mocks/contentGenerator'
-import { RASHIS } from '@/data/rashis'
+import { supabase } from '@/lib/supabaseClient'
 import { Card } from '@/components/ui/Card'
+import { Badge } from '@/components/ui/Badge'
+import type { CompatibilityReportRow, DailyReadingRow, FinancialReadingRow, MedicalReadingRow } from '@/types/db'
 
-const DAYS_TO_SHOW = 10
+type HistoryEntry =
+  | { kind: 'daily'; at: string; row: DailyReadingRow }
+  | { kind: 'compatibility'; at: string; row: CompatibilityReportRow }
+  | { kind: 'financial'; at: string; row: FinancialReadingRow }
+  | { kind: 'medical'; at: string; row: MedicalReadingRow }
+
+const KIND_LABEL: Record<HistoryEntry['kind'], string> = {
+  daily: 'Daily reading',
+  compatibility: 'Compatibility',
+  financial: 'Financial',
+  medical: 'Wellness',
+}
 
 export default function HistoryPage() {
-  const user = useAuthStore((s) => s.user)
-  const ensureChart = useChartStore((s) => s.ensureChart)
-  const chart = useMemo(() => (user?.birthData ? ensureChart(user.birthData) : null), [user, ensureChart])
+  const session = useAuthStore((s) => s.session)
+  const [entries, setEntries] = useState<HistoryEntry[]>([])
+  const [loading, setLoading] = useState(true)
 
-  const entries = useMemo(() => {
-    if (!chart) return []
-    const moon = chart.placements.find((p) => p.planet === 'Moon')!
-    const sun = chart.placements.find((p) => p.planet === 'Sun')!
-    const asc = chart.ascendant
-
-    return Array.from({ length: DAYS_TO_SHOW }, (_, i) => {
-      const date = new Date()
-      date.setDate(date.getDate() - i)
-      const reading = generateDailyReading(chart, date)
-      return { date, reading, moon, sun, asc }
+  useEffect(() => {
+    if (!session) return
+    const userId = session.user.id
+    Promise.all([
+      supabase.from('daily_readings').select('*').eq('user_id', userId).order('created_at', { ascending: false }).limit(20),
+      supabase.from('compatibility_reports').select('*').eq('user_id', userId).order('created_at', { ascending: false }).limit(20),
+      supabase.from('financial_readings').select('*').eq('user_id', userId).order('created_at', { ascending: false }).limit(20),
+      supabase.from('medical_readings').select('*').eq('user_id', userId).order('created_at', { ascending: false }).limit(20),
+    ]).then(([daily, compat, financial, medical]) => {
+      const all: HistoryEntry[] = [
+        ...(daily.data ?? []).map((row) => ({ kind: 'daily' as const, at: row.created_at, row })),
+        ...(compat.data ?? []).map((row) => ({ kind: 'compatibility' as const, at: row.created_at, row })),
+        ...(financial.data ?? []).map((row) => ({ kind: 'financial' as const, at: row.created_at, row })),
+        ...(medical.data ?? []).map((row) => ({ kind: 'medical' as const, at: row.created_at, row })),
+      ].sort((a, b) => new Date(b.at).getTime() - new Date(a.at).getTime())
+      setEntries(all)
+      setLoading(false)
     })
-  }, [chart])
-
-  if (!chart) return null
+  }, [session])
 
   return (
     <div className="mx-auto max-w-2xl">
       <p className="text-xs uppercase tracking-wide text-ink-faint">History</p>
       <h1 className="mt-1 font-display text-4xl">Your reading history</h1>
-      <p className="mt-2 text-ink-muted">Every daily reading, in one place.</p>
+      <p className="mt-2 text-ink-muted">Every reading Astra has generated for you, in one place.</p>
 
       <div className="mt-8 space-y-3">
-        {entries.map(({ date, reading, moon, sun, asc }, i) => (
-          <Card key={i}>
+        {loading && <p className="text-ink-muted">Loading…</p>}
+        {!loading && entries.length === 0 && <p className="text-ink-muted">Nothing yet — visit Today or Ask Astra to generate your first reading.</p>}
+        {entries.map((entry) => (
+          <Card key={`${entry.kind}-${entry.row.id}`}>
             <div className="flex items-center justify-between">
-              <p className="text-sm text-ink-muted">
-                {date.toLocaleDateString('en-US', { weekday: 'long', day: 'numeric', month: 'short' })}
-              </p>
+              <Badge variant="neutral">{KIND_LABEL[entry.kind]}</Badge>
               <p className="text-xs text-ink-faint">
-                {RASHIS[sun.rashiIndex].name} · {RASHIS[moon.rashiIndex].name}
-                {chart.housesReliable && asc ? ` · ${RASHIS[asc.rashiIndex].name}` : ''}
+                {new Date(entry.at).toLocaleDateString('en-US', { weekday: 'long', day: 'numeric', month: 'short' })}
               </p>
             </div>
-            <p className="mt-2 text-ink">{reading.focus}</p>
+            <p className="mt-2 text-ink">
+              {entry.kind === 'daily' && entry.row.body}
+              {entry.kind === 'compatibility' && entry.row.prose}
+              {entry.kind === 'financial' && entry.row.body}
+              {entry.kind === 'medical' && entry.row.body}
+            </p>
+            {(entry.kind === 'financial' || entry.kind === 'medical') && (
+              <p className="mt-2 text-xs italic text-ink-faint">{entry.row.disclaimer}</p>
+            )}
           </Card>
         ))}
       </div>

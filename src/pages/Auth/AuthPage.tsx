@@ -4,39 +4,52 @@ import { useNavigate, Link } from 'react-router-dom'
 import { Sparkles } from 'lucide-react'
 import { Button } from '@/components/ui/Button'
 import { Input } from '@/components/ui/Input'
-import { useAuthStore } from '@/store/authStore'
-import { signInWithEmail, signUpWithEmail, signInWithGoogleMock } from '@/services/authService'
+import { signInWithEmail, signUpWithEmail, signInWithGoogle } from '@/services/authService'
 
 export default function AuthPage() {
   const navigate = useNavigate()
-  const signIn = useAuthStore((s) => s.signIn)
   const [mode, setMode] = useState<'signin' | 'signup'>('signin')
   const [name, setName] = useState('')
   const [email, setEmail] = useState('')
   const [password, setPassword] = useState('')
   const [error, setError] = useState<string | null>(null)
+  const [notice, setNotice] = useState<string | null>(null)
+  const [submitting, setSubmitting] = useState(false)
 
-  function afterAuth(profile: Parameters<typeof signIn>[0]) {
-    signIn(profile)
-    navigate(profile.birthData ? '/dashboard' : '/onboarding')
-  }
-
-  function handleSubmit(e: FormEvent) {
+  async function handleSubmit(e: FormEvent) {
     e.preventDefault()
     setError(null)
+    setNotice(null)
+    setSubmitting(true)
     try {
-      const profile =
-        mode === 'signin'
-          ? signInWithEmail(email, password)
-          : signUpWithEmail(email, password, name || email.split('@')[0])
-      afterAuth(profile)
+      if (mode === 'signin') {
+        await signInWithEmail(email, password)
+        // onAuthStateChange picks up the session; AuthGate/OnboardingGate route from there.
+        navigate('/dashboard')
+      } else {
+        const { needsEmailConfirmation } = await signUpWithEmail(email, password, name || email.split('@')[0])
+        if (needsEmailConfirmation) {
+          setNotice('Check your email to confirm your account, then sign in.')
+          setMode('signin')
+        } else {
+          navigate('/onboarding')
+        }
+      }
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Something went wrong.')
+    } finally {
+      setSubmitting(false)
     }
   }
 
-  function handleGoogle() {
-    afterAuth(signInWithGoogleMock())
+  async function handleGoogle() {
+    setError(null)
+    try {
+      await signInWithGoogle()
+      // Browser redirects to Google and back — nothing else to do here.
+    } catch (err) {
+      setError(err instanceof Error ? err.message : 'Something went wrong.')
+    }
   }
 
   return (
@@ -109,13 +122,14 @@ export default function AuthPage() {
               onChange={(e) => setPassword(e.target.value)}
               autoComplete={mode === 'signin' ? 'current-password' : 'new-password'}
               required
-              minLength={4}
+              minLength={6}
             />
 
+            {notice && <p className="text-sm text-positive">{notice}</p>}
             {error && <p className="text-sm text-negative">{error}</p>}
 
-            <Button type="submit" size="lg" className="w-full">
-              {mode === 'signin' ? 'Sign in' : 'Create account'}
+            <Button type="submit" size="lg" className="w-full" disabled={submitting}>
+              {submitting ? 'One moment…' : mode === 'signin' ? 'Sign in' : 'Create account'}
             </Button>
           </form>
 

@@ -5,30 +5,33 @@ import { Button } from '@/components/ui/Button'
 import { Input } from '@/components/ui/Input'
 import { Card } from '@/components/ui/Card'
 import { useAuthStore } from '@/store/authStore'
-import { buildBirthData } from '@/lib/buildBirthData'
+import { supabase } from '@/lib/supabaseClient'
+import { callEdgeFunction } from '@/lib/edgeFunctions'
+import { resolveTimeZone, resolveHistoricalOffsetMinutes } from '@/services/timezoneService'
 import PlaceOfBirthField, { type PlaceOfBirthValue } from '@/components/forms/PlaceOfBirthField'
 import BirthDateTimeFields from '@/components/forms/BirthDateTimeFields'
 
 export default function ProfilePage() {
-  const user = useAuthStore((s) => s.user)
-  const updateProfile = useAuthStore((s) => s.updateProfile)
-  const birthData = user?.birthData ?? null
+  const session = useAuthStore((s) => s.session)
+  const profile = useAuthStore((s) => s.profile)
+  const selfBirthProfile = useAuthStore((s) => s.selfBirthProfile)
+  const refreshUserData = useAuthStore((s) => s.refreshUserData)
 
-  const [name, setName] = useState(user?.displayName ?? '')
-  const [date, setDate] = useState(birthData?.date ?? '')
-  const [time, setTime] = useState(birthData?.time ?? '12:00')
-  const [timeUnknown, setTimeUnknown] = useState(birthData?.timeAccuracy === 'unknown')
+  const [name, setName] = useState(profile?.display_name ?? '')
+  const [date, setDate] = useState(selfBirthProfile?.date_of_birth ?? '')
+  const [time, setTime] = useState(selfBirthProfile?.time_of_birth?.slice(0, 5) ?? '12:00')
+  const [timeUnknown, setTimeUnknown] = useState(!selfBirthProfile?.time_known)
   const [place, setPlace] = useState<PlaceOfBirthValue | null>(
-    birthData ? { label: birthData.placeLabel, lat: birthData.lat, lon: birthData.lon } : null,
+    selfBirthProfile ? { label: selfBirthProfile.place_name, lat: selfBirthProfile.lat, lon: selfBirthProfile.lon } : null,
   )
 
   const [error, setError] = useState<string | null>(null)
   const [saved, setSaved] = useState(false)
   const [submitting, setSubmitting] = useState(false)
 
-  if (!user) return null
+  if (!session || !profile) return null
 
-  function handleSubmit(e: FormEvent) {
+  async function handleSubmit(e: FormEvent) {
     e.preventDefault()
     setError(null)
     setSaved(false)
@@ -36,22 +39,36 @@ export default function ProfilePage() {
     if (!name.trim()) return setError('Enter your name.')
     if (!date) return setError('Enter your date of birth.')
     if (!place) return setError('Enter your birth place — search above, or switch to manual coordinates.')
+    if (!selfBirthProfile) return setError('Missing birth profile — try onboarding again.')
 
     setSubmitting(true)
     try {
-      const newBirthData = buildBirthData({
-        name,
-        date,
-        time,
-        timeAccuracy: timeUnknown ? 'unknown' : 'exact',
-        placeLabel: place.label,
-        lat: place.lat,
-        lon: place.lon,
-      })
-      updateProfile({ displayName: name, birthData: newBirthData })
+      const tzName = resolveTimeZone(place.lat, place.lon)
+      const effectiveTime = timeUnknown ? '12:00' : time
+      const utcOffsetMinutes = resolveHistoricalOffsetMinutes(tzName, date, effectiveTime)
+
+      await supabase.from('profiles').update({ display_name: name }).eq('id', session!.user.id)
+
+      const { error: updateError } = await supabase
+        .from('birth_profiles')
+        .update({
+          name,
+          date_of_birth: date,
+          time_of_birth: timeUnknown ? null : time,
+          time_known: !timeUnknown,
+          place_name: place.label,
+          lat: place.lat,
+          lon: place.lon,
+          utc_offset_minutes: utcOffsetMinutes,
+        })
+        .eq('id', selfBirthProfile.id)
+      if (updateError) throw new Error(updateError.message)
+
+      await callEdgeFunction('compute-chart', { subjectType: 'birth_profile', subjectId: selfBirthProfile.id })
+      await refreshUserData()
       setSaved(true)
-    } catch {
-      setError('Couldn’t resolve a timezone for that location — double check the coordinates.')
+    } catch (err) {
+      setError(err instanceof Error ? err.message : "Couldn't resolve a timezone for that location — double check the coordinates.")
     } finally {
       setSubmitting(false)
     }
@@ -71,7 +88,7 @@ export default function ProfilePage() {
           <h2 className="font-display text-lg">Account</h2>
           <div className="mt-3 space-y-3">
             <Input placeholder="Your name" value={name} onChange={(e) => setName(e.target.value)} />
-            <Input value={user.email} disabled />
+            <Input value={profile.email} disabled />
           </div>
         </Card>
 

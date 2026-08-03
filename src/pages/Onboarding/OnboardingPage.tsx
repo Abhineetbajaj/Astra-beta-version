@@ -5,16 +5,19 @@ import { Button } from '@/components/ui/Button'
 import { Input } from '@/components/ui/Input'
 import { Card } from '@/components/ui/Card'
 import { useAuthStore } from '@/store/authStore'
-import { buildBirthData } from '@/lib/buildBirthData'
+import { supabase } from '@/lib/supabaseClient'
+import { callEdgeFunction } from '@/lib/edgeFunctions'
+import { resolveTimeZone, resolveHistoricalOffsetMinutes } from '@/services/timezoneService'
 import PlaceOfBirthField, { type PlaceOfBirthValue } from '@/components/forms/PlaceOfBirthField'
 import BirthDateTimeFields from '@/components/forms/BirthDateTimeFields'
 
 export default function OnboardingPage() {
   const navigate = useNavigate()
-  const user = useAuthStore((s) => s.user)
-  const updateProfile = useAuthStore((s) => s.updateProfile)
+  const session = useAuthStore((s) => s.session)
+  const profile = useAuthStore((s) => s.profile)
+  const refreshUserData = useAuthStore((s) => s.refreshUserData)
 
-  const [name, setName] = useState(user?.displayName ?? '')
+  const [name, setName] = useState(profile?.display_name ?? '')
   const [date, setDate] = useState('')
   const [time, setTime] = useState('12:00')
   const [timeUnknown, setTimeUnknown] = useState(false)
@@ -22,30 +25,63 @@ export default function OnboardingPage() {
 
   const [error, setError] = useState<string | null>(null)
   const [submitting, setSubmitting] = useState(false)
+  // Set once the birth_profiles row is saved. If chart computation then fails, a retry must reuse
+  // this id and skip straight to compute-chart — re-inserting would hit the "one self profile per
+  // user" unique constraint and produce a confusing new error instead of actually retrying.
+  const [savedProfileId, setSavedProfileId] = useState<string | null>(null)
 
-  function handleSubmit(e: FormEvent) {
+  async function handleSubmit(e: FormEvent) {
     e.preventDefault()
     setError(null)
 
+    if (!session) return setError('Your session expired — sign in again.')
     if (!name.trim()) return setError('Enter your name.')
     if (!date) return setError('Enter your date of birth.')
     if (!place) return setError('Enter your birth place — search above, or switch to manual coordinates.')
 
     setSubmitting(true)
     try {
-      const birthData = buildBirthData({
-        name,
-        date,
-        time,
-        timeAccuracy: timeUnknown ? 'unknown' : 'exact',
-        placeLabel: place.label,
-        lat: place.lat,
-        lon: place.lon,
-      })
-      updateProfile({ displayName: name, birthData })
+      let profileId = savedProfileId
+
+      if (!profileId) {
+        const tzName = resolveTimeZone(place.lat, place.lon)
+        const effectiveTime = timeUnknown ? '12:00' : time
+        const utcOffsetMinutes = resolveHistoricalOffsetMinutes(tzName, date, effectiveTime)
+
+        const { data: birthProfile, error: insertError } = await supabase
+          .from('birth_profiles')
+          .insert({
+            user_id: session.user.id,
+            relation: 'self',
+            name,
+            date_of_birth: date,
+            time_of_birth: timeUnknown ? null : time,
+            time_known: !timeUnknown,
+            place_name: place.label,
+            lat: place.lat,
+            lon: place.lon,
+            utc_offset_minutes: utcOffsetMinutes,
+          })
+          .select()
+          .single()
+        if (insertError || !birthProfile) throw new Error(insertError?.message ?? 'Could not save birth profile.')
+        profileId = birthProfile.id
+        setSavedProfileId(profileId)
+      }
+
+      // The birth profile is saved at this point no matter what happens below — only the chart
+      // computation can still fail and be retried.
+      await callEdgeFunction('compute-chart', { subjectType: 'birth_profile', subjectId: profileId })
+      await supabase.from('profiles').update({ display_name: name }).eq('id', session.user.id)
+      await refreshUserData()
+
       navigate('/dashboard', { replace: true })
-    } catch {
-      setError('Couldn’t resolve a timezone for that location — double check the coordinates.')
+    } catch (err) {
+      setError(
+        err instanceof Error
+          ? err.message
+          : "Couldn't resolve a timezone for that location — double check the coordinates.",
+      )
     } finally {
       setSubmitting(false)
     }
@@ -97,10 +133,23 @@ export default function OnboardingPage() {
             </p>
           </Card>
 
-          {error && <p className="text-sm text-negative">{error}</p>}
+          {error && (
+            <div className="rounded-xl border border-negative/30 bg-negative/5 px-4 py-3">
+              <p className="text-sm text-negative">{error}</p>
+              {savedProfileId && (
+                <p className="mt-1 text-xs text-ink-faint">
+                  Your details are saved — retrying will only recompute the chart, not resubmit the form.
+                </p>
+              )}
+            </div>
+          )}
 
           <Button type="submit" size="lg" className="w-full" disabled={submitting}>
-            {submitting ? 'Calculating your chart…' : 'Calculate my chart'}
+            {submitting
+              ? 'Calculating your chart…'
+              : error && savedProfileId
+                ? 'Retry chart calculation'
+                : 'Calculate my chart'}
           </Button>
         </form>
       </div>

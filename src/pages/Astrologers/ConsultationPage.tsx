@@ -3,7 +3,7 @@ import type { FormEvent } from 'react'
 import { useParams, Link } from 'react-router-dom'
 import { ArrowLeft, Send } from 'lucide-react'
 import { ASTROLOGER_PERSONAS } from '@/data/astrologerPersonas'
-import { useWalletStore } from '@/store/walletStore'
+import { useWalletBalance } from '@/lib/useWalletBalance'
 import { pick } from '@/lib/seededHash'
 import { CONSULTATION_OPENERS, CONSULTATION_REPLIES } from '@/mocks/consultationReplies'
 import { cn } from '@/lib/cn'
@@ -18,8 +18,7 @@ const TICK_MS = 10000
 
 export default function ConsultationPage() {
   const { id } = useParams()
-  const credits = useWalletStore((s) => s.credits)
-  const debit = useWalletStore((s) => s.debit)
+  const { credits, debit } = useWalletBalance()
 
   const astrologer = ASTROLOGER_PERSONAS.find((a) => a.id === id)
   const [messages, setMessages] = useState<Message[]>([])
@@ -36,8 +35,8 @@ export default function ConsultationPage() {
 
   useEffect(() => {
     if (!astrologer || ended) return
-    const interval = setInterval(() => {
-      const ok = debit(astrologer.ratePerMin, `Consultation with ${astrologer.name}`)
+    const interval = setInterval(async () => {
+      const ok = await debit(astrologer.ratePerMin, `Consultation with ${astrologer.name}`)
       if (!ok) {
         setEnded(true)
         setMessages((m) => [

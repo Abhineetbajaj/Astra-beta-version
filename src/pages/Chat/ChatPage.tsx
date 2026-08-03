@@ -1,16 +1,12 @@
-import { useMemo, useRef, useState } from 'react'
+import { useEffect, useRef, useState } from 'react'
 import type { FormEvent } from 'react'
-import { useEffect } from 'react'
+import { AnimatePresence, motion } from 'framer-motion'
 import { Send, MessageCircle } from 'lucide-react'
 import { useAuthStore } from '@/store/authStore'
-import { useChartStore } from '@/store/chartStore'
-import { generateChatReply, type ChatTopic } from '@/mocks/chatGenerator'
+import { supabase } from '@/lib/supabaseClient'
+import { callEdgeFunction } from '@/lib/edgeFunctions'
 import { cn } from '@/lib/cn'
-
-interface Message {
-  role: 'user' | 'astra'
-  text: string
-}
+import type { ChatMessageRow } from '@/types/db'
 
 const SUGGESTIONS = [
   'What does my chart say about this week?',
@@ -20,45 +16,50 @@ const SUGGESTIONS = [
 ]
 
 export default function ChatPage() {
-  const user = useAuthStore((s) => s.user)
-  const ensureChart = useChartStore((s) => s.ensureChart)
-  const chart = useMemo(() => (user?.birthData ? ensureChart(user.birthData) : null), [user, ensureChart])
+  const session = useAuthStore((s) => s.session)
 
-  const [messages, setMessages] = useState<Message[]>([])
+  const [messages, setMessages] = useState<ChatMessageRow[]>([])
   const [draft, setDraft] = useState('')
   const [thinking, setThinking] = useState(false)
+  const [error, setError] = useState<string | null>(null)
   const endRef = useRef<HTMLDivElement>(null)
-  const lastTopicRef = useRef<ChatTopic>(null)
+
+  useEffect(() => {
+    if (!session) return
+    supabase
+      .from('chat_messages')
+      .select('id, user_id, role, content, created_at')
+      .eq('user_id', session.user.id)
+      .order('created_at', { ascending: true })
+      .then(({ data }) => setMessages((data as ChatMessageRow[]) ?? []))
+  }, [session])
 
   useEffect(() => {
     endRef.current?.scrollIntoView({ behavior: 'smooth' })
   }, [messages, thinking])
 
-  function send(text: string) {
-    if (!text.trim() || !chart) return
-    const userMessage: Message = { role: 'user', text }
-    setMessages((m) => [...m, userMessage])
+  async function send(text: string) {
+    if (!text.trim() || thinking) return
+    setError(null)
     setDraft('')
     setThinking(true)
+    // Optimistic local echo — the real row (with server-assigned id) replaces this on response.
+    setMessages((m) => [...m, { id: `pending-${Date.now()}`, user_id: '', role: 'user', content: text, created_at: new Date().toISOString() }])
 
-    const seed = `${chart.birthMoment.getTime()}|${messages.length}|${text}`
-    setTimeout(
-      () => {
-        const reply = generateChatReply(text, chart, seed, lastTopicRef.current)
-        lastTopicRef.current = reply.topic
-        setMessages((m) => [...m, { role: 'astra', text: reply.text }])
-        setThinking(false)
-      },
-      500 + Math.random() * 500,
-    )
+    try {
+      const { message } = await callEdgeFunction<{ message: ChatMessageRow }>('chat', { message: text })
+      setMessages((m) => [...m, message])
+    } catch (err) {
+      setError(err instanceof Error ? err.message : 'Something went wrong asking Astra.')
+    } finally {
+      setThinking(false)
+    }
   }
 
   function handleSubmit(e: FormEvent) {
     e.preventDefault()
     send(draft)
   }
-
-  if (!chart) return null
 
   return (
     <div className="mx-auto flex h-[calc(100vh-140px)] max-w-2xl flex-col">
@@ -86,30 +87,45 @@ export default function ChatPage() {
         </div>
       ) : (
         <div className="flex-1 space-y-4 overflow-y-auto py-6">
-          {messages.map((m, i) => (
-            <div key={i} className={cn('flex', m.role === 'user' ? 'justify-end' : 'justify-start')}>
-              <div
-                className={cn(
-                  'max-w-[80%] rounded-2xl px-4 py-3 text-sm',
-                  m.role === 'user'
-                    ? 'bg-ink text-paper'
-                    : 'border border-line bg-paper-raised text-ink',
-                )}
+          <AnimatePresence initial={false}>
+            {messages.map((m) => (
+              <motion.div
+                key={m.id}
+                initial={{ opacity: 0, y: 6 }}
+                animate={{ opacity: 1, y: 0 }}
+                transition={{ duration: 0.25 }}
+                className={cn('flex', m.role === 'user' ? 'justify-end' : 'justify-start')}
               >
-                {m.text}
-              </div>
-            </div>
-          ))}
+                <div
+                  className={cn(
+                    'max-w-[80%] rounded-2xl px-4 py-3 text-sm',
+                    m.role === 'user' ? 'bg-ink text-paper' : 'border border-line bg-paper-raised text-ink',
+                  )}
+                >
+                  {m.content}
+                </div>
+              </motion.div>
+            ))}
+          </AnimatePresence>
           {thinking && (
-            <div className="flex justify-start">
-              <div className="rounded-2xl border border-line bg-paper-raised px-4 py-3 text-sm text-ink-faint">
-                thinking…
+            <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} className="flex justify-start">
+              <div className="flex items-center gap-1 rounded-2xl border border-line bg-paper-raised px-4 py-3">
+                {[0, 1, 2].map((i) => (
+                  <motion.span
+                    key={i}
+                    className="size-1.5 rounded-full bg-ink-faint"
+                    animate={{ opacity: [0.3, 1, 0.3] }}
+                    transition={{ duration: 1, repeat: Infinity, delay: i * 0.15 }}
+                  />
+                ))}
               </div>
-            </div>
+            </motion.div>
           )}
           <div ref={endRef} />
         </div>
       )}
+
+      {error && <p className="pb-2 text-sm text-negative">{error}</p>}
 
       <form onSubmit={handleSubmit} className="flex items-center gap-2 border-t border-line pt-4">
         <input
@@ -120,7 +136,7 @@ export default function ChatPage() {
         />
         <button
           type="submit"
-          disabled={!draft.trim()}
+          disabled={!draft.trim() || thinking}
           className="flex size-12 shrink-0 items-center justify-center rounded-full bg-accent text-accent-ink disabled:opacity-40"
         >
           <Send className="size-4" strokeWidth={1.75} />

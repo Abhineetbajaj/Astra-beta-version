@@ -4,10 +4,12 @@ import { NAKSHATRAS } from '@/data/nakshatras'
 import { PLANET_GLYPH } from '@/components/chart/glyphs'
 import { Badge } from '@/components/ui/Badge'
 import { cn } from '@/lib/cn'
+import type { SignNamingStyle } from '@/store/chartDisplayStore'
 
 interface PlacementsTableProps {
   placements: PlanetPlacement[]
   housesReliable: boolean
+  namingStyle?: SignNamingStyle
 }
 
 function formatDegree(deg: number): string {
@@ -23,7 +25,7 @@ const DIGNITY_LABEL: Record<PlanetPlacement['dignity'], string | null> = {
   neutral: null,
 }
 
-export default function PlacementsTable({ placements, housesReliable }: PlacementsTableProps) {
+export default function PlacementsTable({ placements, housesReliable, namingStyle = 'western' }: PlacementsTableProps) {
   return (
     <div className="overflow-x-auto">
       <table className="w-full min-w-[560px] text-sm">
@@ -52,7 +54,7 @@ export default function PlacementsTable({ placements, housesReliable }: Placemen
                   </span>
                 </td>
                 <td className="py-2.5 pr-4">
-                  {rashi.symbol} {rashi.name}
+                  {rashi.symbol} {namingStyle === 'vedic' ? rashi.sanskrit : rashi.name}
                 </td>
                 <td className="nums-tabular py-2.5 pr-4 text-ink-muted">
                   {formatDegree(p.degreeInRashi)}

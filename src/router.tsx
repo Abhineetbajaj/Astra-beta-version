@@ -1,6 +1,7 @@
 import { Routes, Route } from 'react-router-dom'
 import AuthGate from '@/components/layout/AuthGate'
 import AppShell from '@/components/layout/AppShell'
+import PremiumGate from '@/components/layout/PremiumGate'
 import LandingPage from '@/pages/Landing/LandingPage'
 import AuthPage from '@/pages/Auth/AuthPage'
 import PricingPage from '@/pages/Pricing/PricingPage'
@@ -10,6 +11,8 @@ import DashboardPage from '@/pages/Dashboard/DashboardPage'
 import NatalChartPage from '@/pages/NatalChart/NatalChartPage'
 import CompatibilityPage from '@/pages/Compatibility/CompatibilityPage'
 import ChatPage from '@/pages/Chat/ChatPage'
+import FinancialPage from '@/pages/Financial/FinancialPage'
+import MedicalPage from '@/pages/Medical/MedicalPage'
 import AstrologersPage from '@/pages/Astrologers/AstrologersPage'
 import AstrologerDetailPage from '@/pages/Astrologers/AstrologerDetailPage'
 import ConsultationPage from '@/pages/Astrologers/ConsultationPage'
@@ -34,6 +37,10 @@ export default function AppRouter() {
           <Route path="/chart" element={<NatalChartPage />} />
           <Route path="/compatibility" element={<CompatibilityPage />} />
           <Route path="/chat" element={<ChatPage />} />
+          <Route element={<PremiumGate />}>
+            <Route path="/financial" element={<FinancialPage />} />
+            <Route path="/medical" element={<MedicalPage />} />
+          </Route>
           <Route path="/astrologers" element={<AstrologersPage />} />
           <Route path="/astrologers/:id" element={<AstrologerDetailPage />} />
           <Route path="/consultations/:id" element={<ConsultationPage />} />

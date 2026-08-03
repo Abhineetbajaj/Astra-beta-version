@@ -1,7 +1,7 @@
 import { useNavigate, useParams, Link } from 'react-router-dom'
 import { Star, ArrowLeft } from 'lucide-react'
 import { ASTROLOGER_PERSONAS } from '@/data/astrologerPersonas'
-import { useWalletStore } from '@/store/walletStore'
+import { useWalletBalance } from '@/lib/useWalletBalance'
 import { Card } from '@/components/ui/Card'
 import { Badge } from '@/components/ui/Badge'
 import { Button } from '@/components/ui/Button'
@@ -9,7 +9,7 @@ import { Button } from '@/components/ui/Button'
 export default function AstrologerDetailPage() {
   const { id } = useParams()
   const navigate = useNavigate()
-  const credits = useWalletStore((s) => s.credits)
+  const { credits } = useWalletBalance()
   const astrologer = ASTROLOGER_PERSONAS.find((a) => a.id === id)
 
   if (!astrologer) {
