@@ -1,7 +1,7 @@
 import { useCallback, useEffect, useMemo, useState } from 'react'
 import { Link } from 'react-router-dom'
 import { motion } from 'framer-motion'
-import { Compass, Heart, Briefcase, Eye, Sparkles, Lock, AlertCircle, Orbit } from 'lucide-react'
+import { Compass, Heart, Briefcase, Eye, Sparkles, Lock, AlertCircle, Orbit, ThumbsUp, ThumbsDown } from 'lucide-react'
 import { useAuthStore } from '@/store/authStore'
 import { useNatalChart } from '@/lib/useNatalChart'
 import { callEdgeFunction } from '@/lib/edgeFunctions'
@@ -323,6 +323,41 @@ export default function DashboardPage() {
                 {highlightGlossaryTerms(paragraph)}
               </p>
             ))}
+
+            {(weeklyReport.highlights.length > 0 || weeklyReport.watch_outs.length > 0) && (
+              <div className="mt-2 grid gap-4 border-t border-line pt-5 sm:grid-cols-2">
+                {weeklyReport.highlights.length > 0 && (
+                  <div>
+                    <div className="flex items-center gap-2 text-positive">
+                      <ThumbsUp className="size-4" strokeWidth={1.75} />
+                      <span className="text-xs font-medium uppercase tracking-wide">Good for you this week</span>
+                    </div>
+                    <ul className="mt-2.5 space-y-1.5">
+                      {weeklyReport.highlights.map((item, i) => (
+                        <li key={i} className="text-sm text-ink">
+                          {item}
+                        </li>
+                      ))}
+                    </ul>
+                  </div>
+                )}
+                {weeklyReport.watch_outs.length > 0 && (
+                  <div>
+                    <div className="flex items-center gap-2 text-ink-faint">
+                      <ThumbsDown className="size-4" strokeWidth={1.75} />
+                      <span className="text-xs font-medium uppercase tracking-wide">Better to avoid</span>
+                    </div>
+                    <ul className="mt-2.5 space-y-1.5">
+                      {weeklyReport.watch_outs.map((item, i) => (
+                        <li key={i} className="text-sm text-ink">
+                          {item}
+                        </li>
+                      ))}
+                    </ul>
+                  </div>
+                )}
+              </div>
+            )}
           </motion.div>
         )}
       </Card>

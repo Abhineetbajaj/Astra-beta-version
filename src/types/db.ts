@@ -107,6 +107,8 @@ export interface WeeklyReportRow {
   birth_profile_id: string
   week_start: string
   body: string
+  highlights: string[]
+  watch_outs: string[]
   created_at: string
 }
 
