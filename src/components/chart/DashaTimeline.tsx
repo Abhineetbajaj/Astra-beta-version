@@ -2,6 +2,7 @@ import { useState } from 'react'
 import { ChevronDown } from 'lucide-react'
 import type { DashaPeriod } from '@/astro-engine/types'
 import { PLANET_ABBR } from '@/components/chart/glyphs'
+import GlossaryTerm from '@/components/GlossaryTerm'
 import { cn } from '@/lib/cn'
 
 interface DashaTimelineProps {
@@ -63,7 +64,9 @@ export default function DashaTimeline({ dashas, now = new Date() }: DashaTimelin
                     {PLANET_ABBR[d.lord]}
                   </span>
                   <div>
-                    <p className="text-sm font-medium">{d.lord} Mahadasha</p>
+                    <p className="text-sm font-medium">
+                      {d.lord} <GlossaryTerm term="mahadasha">Mahadasha</GlossaryTerm>
+                    </p>
                     <p className="nums-tabular text-xs text-ink-muted">
                       {formatDate(d.startDate)} – {formatDate(d.endDate)}
                     </p>
@@ -94,7 +97,7 @@ export default function DashaTimeline({ dashas, now = new Date() }: DashaTimelin
                         )}
                       >
                         <span>
-                          {d.lord}–{antar.lord} Antardasha
+                          {d.lord}–{antar.lord} <GlossaryTerm term="antardasha">Antardasha</GlossaryTerm>
                         </span>
                         <span className="nums-tabular text-ink-muted">
                           {formatDate(antar.startDate)} – {formatDate(antar.endDate)}

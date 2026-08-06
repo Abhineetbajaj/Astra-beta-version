@@ -101,12 +101,26 @@ codebase.
    on demand, rather than a dead-end error. `OnboardingPage` also tracks the saved profile id across
    retries so a failed first attempt can be retried without hitting the one-self-profile-per-user
    unique constraint on a duplicate insert.
+9. **Transits (Gochara) are computed fresh on every call, never persisted.** Unlike the natal chart,
+   where the planets are *today* changes daily, so `_shared/transitFacts.ts` /
+   `src/astro-engine/transits.ts` always recompute from the current time — there's no
+   `transits` table. Whatever snapshot fed a given day's `daily_readings`/`chat_messages` row is
+   archived in that row's `facts_used` jsonb, same pattern as every other generated-content table.
+10. **A function with no Supabase session (cron jobs, public email links) needs
+    `verify_jwt = false` in `supabase/config.toml`, not just an internal auth check.** The platform's
+    JWT gate runs *before* the function code, so a custom header check (`x-cron-secret`,
+    `unsubscribe_token`) alone isn't enough — confirmed the hard way when `send-daily-digest` 401'd
+    at the gateway (`UNAUTHORIZED_NO_AUTH_HEADER`) before its own secret check ever ran. See
+    `[functions.send-daily-digest]`/`[functions.unsubscribe-digest]` in `config.toml`.
 
 ## Key files & folders
 
 ```
 src/
   astro-engine/         pure TS astrology engine — ephemeris, ayanamsa, houses, nakshatra, dasha, guna
+                         transits.ts computes Gochara (today's real planetary positions relative to
+                         a natal chart) — pure composition of the same ephemeris/ayanamsa/house
+                         functions, no new astronomy code, never persisted (see architecture rule 9)
   data/                 static reference data (rashis, nakshatras, dasha sequence, astrologer personas)
   lib/
     supabaseClient.ts    Supabase client + isBackendConfigured guard
@@ -142,6 +156,10 @@ supabase/
       astro-engine/, data/        Deno copies of the frontend engine (see "keep in sync" note above)
       computeAndPersistChart.ts   compute + persist a chart for a birth_profile or company_profile
       loadChartFacts.ts           read a persisted chart back out as compact LLM-ready JSON
+      transitFacts.ts             loads a chart's natal ascendant/Moon and computes today's Gochara
+                                   fresh (Deno copy of astro-engine/transits.ts) — never persisted
+      generateDailyReading.ts     the get-or-generate-today's-reading logic, shared by daily-reading
+                                   (HTTP) and send-daily-digest (cron) so the Gemini prompt lives once
       yogas.ts                    deterministic wealth-yoga detection (3 yogas, honestly scoped)
       houseLords.ts               whole-sign house-lord lookup
       premium.ts                  requirePremium() guard, throws PremiumRequiredError (→ 402)
@@ -149,16 +167,31 @@ supabase/
       supabaseAdmin.ts            service-role client + requireUser() (resolves caller from JWT)
       cors.ts
     compute-chart/         explicit "compute my chart" — also the one client-callable entry point
-    daily-reading/         Dashboard: paragraph + 4 cards, idempotent per (profile, date)
+    daily-reading/         Dashboard: paragraph + 4 cards, idempotent per (profile, date); thin
+                            wrapper around _shared/generateDailyReading.ts (transit-grounded)
     weekly-report/         Premium — 4-paragraph deep-dive, idempotent per (profile, ISO week)
-    chat/                  Ask Astra — priority Gemini integration, facts + history grounded
+    chat/                  Ask Astra — priority Gemini integration, facts + transits + history grounded
     compatibility/         real guna score (3 of 8 kutas) + Gemini prose
     financial-reading/     Premium — wealth yogas, 2nd/11th strength, dasha favorability, disclaimer
     medical-reading/       Premium — 6th/8th/12th house, soft language only, disclaimer
+    send-daily-digest/     pg_cron-triggered (see below) — emails opted-in users their reading via
+                            Resend; verify_jwt=false, authenticates via x-cron-secret header instead
+    unsubscribe-digest/    public link clicked from the email; verify_jwt=false, authenticates via
+                            the profile's unsubscribe_token query param
     razorpay-create-order/ creates a Razorpay order for wallet_topup or premium_subscription
     razorpay-webhook/      HMAC-verified; the ONLY place credits/Premium are actually granted
   .env.example            documents GEMINI_API_KEY / RAZORPAY_* — copy to .env for local dev
 ```
+
+**Daily email digest scheduling:** `pg_cron` + `pg_net` extensions and the `profiles.daily_digest_opt_in`/
+`unsubscribe_token` columns are in `supabase/migrations/20260806180000_daily_digest.sql`. The
+`cron.schedule(...)` call itself (job name `send-daily-digest`, `30 1 * * *` = 7:00 AM IST) is
+**not** in that migration — it embeds a secret (the shared `x-cron-secret` the cron job sends,
+stored via `vault.create_secret('cron_secret', ...)`), so it was run once directly against the
+live project instead, same "never commit a secret" rule as `.env` applied to a migration file.
+Check `select * from cron.job` to see it; to change the schedule or rotate the secret, update both
+the `CRON_SECRET` edge function secret (`supabase secrets set`) and the `vault.update_secret(...)`
+value together, or the cron job's requests will start 403ing against `send-daily-digest`.
 
 ## Setup checklist (what's real vs. what needs your credentials)
 
@@ -169,14 +202,17 @@ Live project: `uejyelsygtgfkufugwvw` (Supabase, `ap-south-1`/Mumbai).
 | Astro engine (client + server) | ✅ Real, tested, no external dependency |
 | `GEMINI_API_KEY` | ✅ Live secret, **end-to-end verified**: compute-chart → daily-reading, chat, compatibility, financial-reading, medical-reading, weekly-report all produce real, grounded, high-quality prose against production data |
 | DB schema + RLS + seed data | ✅ **Pushed to the live project** via `supabase db push` — 3 migrations applied cleanly against real Postgres |
-| Edge functions | ✅ **Deployed** — all 9 live at `https://uejyelsygtgfkufugwvw.supabase.co/functions/v1/<name>`, every one exercised end-to-end with a real test account (signup → onboarding → chart → all 6 Gemini-backed functions → cleanup) |
+| Edge functions | ✅ **Deployed** — all 11 live at `https://uejyelsygtgfkufugwvw.supabase.co/functions/v1/<name>`, every one exercised end-to-end with a real test account (signup → onboarding → chart → all Gemini-backed functions → cleanup) |
 | `VITE_SUPABASE_URL` / `VITE_SUPABASE_ANON_KEY` | ✅ Set in `.env`, dev server picks them up |
 | Google OAuth | ✅ **Enabled and end-to-end verified** — Google Cloud OAuth client created, wired into Supabase via the Management API, real sign-in tested through to onboarding |
 | Razorpay account/keys | ❌ Not set — `razorpay-create-order`/`razorpay-webhook` are deployed but will throw clearly (not silently mock) until `RAZORPAY_KEY_ID`/`RAZORPAY_KEY_SECRET`/`RAZORPAY_WEBHOOK_SECRET` are set via `supabase secrets set` |
+| Real transits (Gochara) | ✅ Live — `daily-reading`, `chat`, and the Dashboard "Today's Sky" card all ground content in today's actual planetary positions; Sade Sati/Guru Gochar math hand-verified against the real, publicly-known 2025-2027 Saturn-in-Pisces transit window |
+| `RESEND_API_KEY` / `send-daily-digest` cron | ⚠️ **Live but sandboxed** — `pg_cron` fires daily, the function runs and generates real readings, but Resend's unverified-domain sandbox only delivers to the account owner's own email (`surya.sharma6066@gmail.com`); every other opted-in user's send fails with a clear `validation_error`, confirmed live (11 profiles, 1 sent, rest failed on this restriction). **Verify a domain at resend.com/domains and switch the `from` address off `onboarding@resend.dev` before this reaches real family testers.** |
 | Prokerala | Deliberately unused — see above |
 
-Remaining to fully close out: set the three `RAZORPAY_*` secrets once you have real keys, and point
-a Razorpay webhook at `https://uejyelsygtgfkufugwvw.supabase.co/functions/v1/razorpay-webhook`.
+Remaining to fully close out: set the three `RAZORPAY_*` secrets once you have real keys, point
+a Razorpay webhook at `https://uejyelsygtgfkufugwvw.supabase.co/functions/v1/razorpay-webhook`, and
+verify a Resend domain so the daily digest actually reaches family testers (see table above).
 Everything else is live and verified, not just written.
 
 ## Known gaps / deliberate simplifications
@@ -204,6 +240,19 @@ Everything else is live and verified, not just written.
   the user before changing, since it's a product decision (see USERSTORE.md).
 - **`src/types/db.ts` is hand-written, not generated.** Run `supabase gen types typescript --linked`
   and reconcile when convenient.
+- **Daily digest sends are Resend-sandboxed to one recipient.** See the setup checklist table above
+  — until a domain is verified at resend.com/domains, `send-daily-digest` can only actually deliver
+  to the Resend account's own email; it still runs on schedule and generates real readings for
+  everyone opted in, so switching the domain over is a config change, not more code.
+- **`daily_digest_opt_in` defaults to `true` for everyone, including pre-existing accounts** — the
+  migration used `not null default true`, which backfills existing rows, not just new ones. Every
+  family tester who'd already signed up before this feature shipped was opted in without an
+  explicit choice. Revisit whether that's the right default once the Resend domain is verified and
+  sends actually reach them — an opt-out-by-default digest is a reasonable retention mechanic, but
+  it's a product decision worth confirming, not something to leave silently assumed.
+- **Two stale test accounts remain in the live `profiles` table**: `astra.debugtest.7734@gmail.com`
+  and `astra.debugtest.9921@gmail.com` (from earlier ad-hoc testing). Left in place deliberately —
+  flagged, not deleted, since ownership/purpose wasn't confirmed.
 
 ## Conventions
 
@@ -212,8 +261,11 @@ Everything else is live and verified, not just written.
 - Never construct Gemini prompts inline without going through `factsGroundingPreamble()`. Every
   reading/chat/compatibility system instruction should also append `CLASSICAL_VOICE_DIRECTIVE`
   (`_shared/gemini.ts`) — named planets/houses/signs/nakshatras/dasha periods, not therapy-speak.
-  It deliberately excludes transit language since the app doesn't compute transits, only natal +
-  dasha facts — extend it only once transit facts actually exist in the FACTS block.
+  The directive references a transit only when a `"transits"` key is actually present in that
+  call's FACTS block — currently `daily-reading`/`send-daily-digest` (via the shared
+  `_shared/generateDailyReading.ts`) and `chat` load transits (`_shared/transitFacts.ts`);
+  `compatibility`/`financial-reading`/`medical-reading`/`weekly-report` don't yet. Extend those only
+  once there's a product reason — grounding in a fact category doesn't have to be universal.
 - DB writes to generated-content/billing tables happen only in edge functions (service role).
   Client-side Supabase calls are read-only for those tables, and read/write for the user's own
   `birth_profiles`/`company_profiles` (RLS-enforced).

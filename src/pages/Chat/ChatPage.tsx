@@ -5,6 +5,7 @@ import { Send, MessageCircle } from 'lucide-react'
 import { useAuthStore } from '@/store/authStore'
 import { supabase } from '@/lib/supabaseClient'
 import { callEdgeFunction } from '@/lib/edgeFunctions'
+import { highlightGlossaryTerms } from '@/lib/highlightGlossaryTerms'
 import { cn } from '@/lib/cn'
 import type { ChatMessageRow } from '@/types/db'
 
@@ -102,7 +103,7 @@ export default function ChatPage() {
                     m.role === 'user' ? 'bg-ink text-paper' : 'border border-line bg-paper-raised text-ink',
                   )}
                 >
-                  {m.content}
+                  {m.role === 'assistant' ? highlightGlossaryTerms(m.content) : m.content}
                 </div>
               </motion.div>
             ))}

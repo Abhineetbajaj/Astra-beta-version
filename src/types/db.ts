@@ -9,6 +9,8 @@ export interface ProfileRow {
   display_name: string
   avatar_url: string | null
   is_premium: boolean
+  daily_digest_opt_in: boolean
+  unsubscribe_token: string
   created_at: string
 }
 

@@ -84,20 +84,28 @@ export function factsGroundingPreamble(factsJson: string): string {
  * astrology prose (daily reading, chart summary, weekly report, compatibility, chat). Classical
  * terminology, not therapy-speak — but grounded ONLY in facts actually present in the FACTS block.
  *
- * Deliberately does not mention transits/Gochara: the facts this app computes are natal placements
- * and dasha periods only — no current/daily planetary transit positions are computed anywhere in
- * this pipeline. Telling the model to reference transits would push it to invent positions we never
- * gave it, which is exactly the fabrication rule this whole system exists to prevent. If transit
- * computation is added to the astro-engine later, transit facts can be added to the FACTS block and
- * this directive extended to reference them — not before.
+ * Transits (Gochara — where the planets actually are today, via `_shared/transitFacts.ts`) are
+ * included in the FACTS block for `daily-reading` and `chat` only; other functions (financial,
+ * medical, compatibility, weekly-report) don't currently load them. The directive below handles
+ * both cases generically — reference a transit only if transit facts are actually present in
+ * THIS call's FACTS block, same "only what's given to you" rule as every other fact category.
+ * Never let the model infer a transit position from natal data alone.
  */
 export const CLASSICAL_VOICE_DIRECTIVE =
   'Write in the voice of a traditional Vedic astrologer: reference the specific planets, houses, ' +
   'signs, nakshatras, and dasha/antardasha periods driving each statement by name, every time — ' +
   'e.g. "with natal Moon in the 6th house from the ascendant, during your Venus Mahadasha–Mercury ' +
-  'Antardasha, expect..." rather than "you may be feeling a bit off this week." Avoid generic ' +
-  'self-help or therapy-speak phrasing ("things are smaller than they look," "trust the process," ' +
-  '"lean into it") — every sentence should read as a specific astrological observation, not a mood ' +
-  'or vibe. This is about phrasing, not license: still describe only the precomputed facts given to ' +
-  'you, and only the natal/dasha facts actually present — never transits, daily positions, or any ' +
-  'fact not in the FACTS block.'
+  'Antardasha, expect..." rather than "you may be feeling a bit off this week." If the FACTS block ' +
+  'includes a "transits" section, weave in at least one specific transiting-planet observation (by ' +
+  'name and house) — that is what makes today\'s reading different from yesterday\'s, not just ' +
+  'restating the unchanging natal chart. Avoid generic self-help or therapy-speak phrasing ("things ' +
+  'are smaller than they look," "trust the process," "lean into it") — every sentence should read as ' +
+  'a specific astrological observation, not a mood or vibe. This is about phrasing, not license: ' +
+  'still describe only the precomputed facts actually present in the FACTS block for this call — ' +
+  'never a transit, dasha period, or any other fact that isn\'t there.\n\n' +
+  'Precision and accessibility are not in tension — do both. A reader with zero astrology background ' +
+  'should still walk away knowing exactly what to do or avoid today, not just what technical placement ' +
+  'is active. So: after naming the real placement/transit/dasha driving a point, follow it with a ' +
+  'concrete plain-language takeaway in the same sentence or the next one — never a separate ' +
+  'disclaimer-style bolt-on, and never so watered down that the astrology disappears. The specificity ' +
+  'is the whole point; translate it, don\'t drop it.'

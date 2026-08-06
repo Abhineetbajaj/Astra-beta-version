@@ -385,6 +385,20 @@ deno_version = 2
 # [edge_runtime.secrets]
 # secret_key = "env(SECRET_VALUE)"
 
+# unsubscribe-digest is a public link clicked straight from an email — no Supabase session exists,
+# so the platform's default JWT gate must be off. It authenticates itself instead via the
+# unguessable per-profile unsubscribe_token in the URL. send-daily-digest is called by pg_cron via
+# net.http_post, which also carries no Supabase session — the platform JWT gate rejects it before
+# the function's own x-cron-secret check ever runs (confirmed by hand: a real invocation 401'd at
+# the gateway with UNAUTHORIZED_NO_AUTH_HEADER), so it needs the same override. The CRON_SECRET
+# header check inside the function is the actual authorization; this only removes a redundant gate
+# in front of it.
+[functions.unsubscribe-digest]
+verify_jwt = false
+
+[functions.send-daily-digest]
+verify_jwt = false
+
 [analytics]
 enabled = true
 port = 54327

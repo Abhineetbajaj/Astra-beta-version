@@ -6,6 +6,7 @@ import { useAuthStore } from '@/store/authStore'
 import { supabase } from '@/lib/supabaseClient'
 import { callEdgeFunction } from '@/lib/edgeFunctions'
 import { resolveTimeZone, resolveHistoricalOffsetMinutes } from '@/services/timezoneService'
+import { highlightGlossaryTerms } from '@/lib/highlightGlossaryTerms'
 import { Card } from '@/components/ui/Card'
 import { Button } from '@/components/ui/Button'
 import { Input } from '@/components/ui/Input'
@@ -30,7 +31,7 @@ function ReadingResult({ reading }: { reading: FinancialReadingRow }) {
           ))}
         </div>
       )}
-      <p className="text-ink">{reading.body}</p>
+      <p className="text-ink">{highlightGlossaryTerms(reading.body)}</p>
       <DisclaimerBanner text={reading.disclaimer} className="mt-4" />
     </motion.div>
   )

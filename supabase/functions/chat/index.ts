@@ -6,6 +6,7 @@
 import { corsHeaders, errorResponse, jsonResponse } from '../_shared/cors.ts'
 import { requireUser } from '../_shared/supabaseAdmin.ts'
 import { loadChartFacts } from '../_shared/loadChartFacts.ts'
+import { loadTransitFacts } from '../_shared/transitFacts.ts'
 import { CLASSICAL_VOICE_DIRECTIVE, factsGroundingPreamble, generateWithGemini } from '../_shared/gemini.ts'
 
 const HISTORY_LIMIT = 12
@@ -27,6 +28,7 @@ Deno.serve(async (req) => {
     if (!selfProfile) return errorResponse('Complete your birth profile before using Ask Astra.', 409)
 
     const facts = await loadChartFacts(admin, 'birth_profile', selfProfile.id)
+    const transits = await loadTransitFacts(admin, facts.natalChartId)
 
     const { data: history } = await admin
       .from('chat_messages')
@@ -41,19 +43,22 @@ Deno.serve(async (req) => {
       .join('\n')
 
     const prompt =
-      factsGroundingPreamble(JSON.stringify(facts, null, 2)) +
+      factsGroundingPreamble(JSON.stringify({ ...facts, transits }, null, 2)) +
       (conversation ? `Recent conversation:\n${conversation}\n\n` : '') +
       `User's new message: ${message}\n\n` +
       'Reply as Astra. Rules:\n' +
       '- Answer the actual question first — don\'t open with throat-clearing like "great question" or a restatement.\n' +
-      '- Cite the specific fact(s) driving your answer by name (planet, sign, house, nakshatra, dignity, or dasha ' +
-      'lord) rather than vague references to "your chart".\n' +
+      '- Cite the specific fact(s) driving your answer by name (planet, sign, house, nakshatra, dignity, dasha ' +
+      'lord, or current transit) rather than vague references to "your chart".\n' +
+      '- If asked about "today"/"right now"/"currently", use the "transits" section (where the planets actually ' +
+      'are today, including the Sade Sati and Jupiter-transit flags) rather than only the unchanging natal chart.\n' +
       '- If a dignity, yoga, or house placement is unusually strong or weak, say so plainly — don\'t soften every ' +
       'observation into pure positivity.\n' +
       '- 2-4 sentences for a normal question; go longer only if the question genuinely needs it (e.g. "explain my ' +
       'whole chart").\n' +
-      '- If the question needs a fact not present above (a different chart, a transit, a specific date\'s planetary ' +
-      'positions), say plainly that you don\'t have that and explain what would be needed — never guess or invent it.\n' +
+      '- If the question needs a fact not present above (a different chart, a specific past/future date\'s ' +
+      'planetary positions), say plainly that you don\'t have that and explain what would be needed — never guess ' +
+      'or invent it.\n' +
       '- Match the conversational thread above — don\'t repeat a point you already made unless asked to elaborate.'
 
     const { error: userInsertError } = await admin
@@ -73,7 +78,7 @@ Deno.serve(async (req) => {
 
     const { data: assistantRow, error: assistantInsertError } = await admin
       .from('chat_messages')
-      .insert({ user_id: user.id, role: 'assistant', content: reply, facts_used: facts })
+      .insert({ user_id: user.id, role: 'assistant', content: reply, facts_used: { ...facts, transits } })
       .select()
       .single()
     if (assistantInsertError) throw new Error(`Failed to save reply: ${assistantInsertError.message}`)

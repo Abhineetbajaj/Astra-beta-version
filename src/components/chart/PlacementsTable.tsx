@@ -3,6 +3,7 @@ import { RASHIS } from '@/data/rashis'
 import { NAKSHATRAS } from '@/data/nakshatras'
 import { PLANET_GLYPH } from '@/components/chart/glyphs'
 import { Badge } from '@/components/ui/Badge'
+import GlossaryTerm from '@/components/GlossaryTerm'
 import { cn } from '@/lib/cn'
 import type { SignNamingStyle } from '@/store/chartDisplayStore'
 
@@ -54,7 +55,10 @@ export default function PlacementsTable({ placements, housesReliable, namingStyl
                   </span>
                 </td>
                 <td className="py-2.5 pr-4">
-                  {rashi.symbol} {namingStyle === 'vedic' ? rashi.sanskrit : rashi.name}
+                  {rashi.symbol}{' '}
+                  <GlossaryTerm term={rashi.name.toLowerCase()}>
+                    {namingStyle === 'vedic' ? rashi.sanskrit : rashi.name}
+                  </GlossaryTerm>
                 </td>
                 <td className="nums-tabular py-2.5 pr-4 text-ink-muted">
                   {formatDegree(p.degreeInRashi)}
@@ -63,13 +67,19 @@ export default function PlacementsTable({ placements, housesReliable, namingStyl
                   {nakshatra.name} <span className="text-xs">· pada {p.nakshatraPada}</span>
                 </td>
                 <td className={cn('py-2.5 pr-4 nums-tabular', !housesReliable && 'text-ink-faint')}>
-                  {housesReliable ? p.houseIndex : '—'}
+                  {housesReliable && p.houseIndex != null ? (
+                    <GlossaryTerm term={`house-${p.houseIndex}`}>{p.houseIndex}</GlossaryTerm>
+                  ) : (
+                    '—'
+                  )}
                 </td>
                 <td className="py-2.5">
                   {dignityLabel ? (
-                    <Badge variant={p.dignity === 'debilitated' ? 'neutral' : 'accent'}>
-                      {dignityLabel}
-                    </Badge>
+                    <GlossaryTerm term={p.dignity} underline={false}>
+                      <Badge variant={p.dignity === 'debilitated' ? 'neutral' : 'accent'}>
+                        {dignityLabel}
+                      </Badge>
+                    </GlossaryTerm>
                   ) : (
                     <span className="text-ink-faint">—</span>
                   )}

@@ -6,6 +6,7 @@ import { useAuthStore } from '@/store/authStore'
 import { supabase } from '@/lib/supabaseClient'
 import { callEdgeFunction } from '@/lib/edgeFunctions'
 import { resolveTimeZone, resolveHistoricalOffsetMinutes } from '@/services/timezoneService'
+import { highlightGlossaryTerms } from '@/lib/highlightGlossaryTerms'
 import { Card } from '@/components/ui/Card'
 import { Input } from '@/components/ui/Input'
 import { Button } from '@/components/ui/Button'
@@ -127,7 +128,7 @@ export default function CompatibilityPage() {
             </div>
           </div>
 
-          <p className="mt-4 text-ink">{report.prose}</p>
+          <p className="mt-4 text-ink">{highlightGlossaryTerms(report.prose)}</p>
 
           <div className="mt-6 space-y-4 border-t border-line pt-5">
             <ScoreRow label="Bhakoot (emotional pacing)" points={breakdown.bhakoot.points} max={breakdown.bhakoot.max} />

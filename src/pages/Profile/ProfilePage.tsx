@@ -4,6 +4,7 @@ import { Check } from 'lucide-react'
 import { Button } from '@/components/ui/Button'
 import { Input } from '@/components/ui/Input'
 import { Card } from '@/components/ui/Card'
+import { Switch } from '@/components/ui/Switch'
 import { useAuthStore } from '@/store/authStore'
 import { supabase } from '@/lib/supabaseClient'
 import { callEdgeFunction } from '@/lib/edgeFunctions'
@@ -28,8 +29,19 @@ export default function ProfilePage() {
   const [error, setError] = useState<string | null>(null)
   const [saved, setSaved] = useState(false)
   const [submitting, setSubmitting] = useState(false)
+  const [savingDigestOptIn, setSavingDigestOptIn] = useState(false)
 
   if (!session || !profile) return null
+
+  async function handleDigestOptInChange(checked: boolean) {
+    setSavingDigestOptIn(true)
+    try {
+      await supabase.from('profiles').update({ daily_digest_opt_in: checked }).eq('id', session!.user.id)
+      await refreshUserData()
+    } finally {
+      setSavingDigestOptIn(false)
+    }
+  }
 
   async function handleSubmit(e: FormEvent) {
     e.preventDefault()
@@ -108,6 +120,22 @@ export default function ProfilePage() {
 
         <Card>
           <PlaceOfBirthField value={place} onChange={setPlace} />
+        </Card>
+
+        <Card>
+          <div className="flex items-center justify-between gap-4">
+            <div>
+              <h2 className="font-display text-lg">Daily email digest</h2>
+              <p className="mt-1 text-sm text-ink-muted">
+                Get today's reading — grounded in real current planetary transits — in your inbox each morning.
+              </p>
+            </div>
+            <Switch
+              checked={profile.daily_digest_opt_in}
+              onCheckedChange={handleDigestOptInChange}
+              className={savingDigestOptIn ? 'opacity-60' : undefined}
+            />
+          </div>
         </Card>
 
         {error && <p className="text-sm text-negative">{error}</p>}

@@ -3,6 +3,7 @@ import { motion } from 'framer-motion'
 import { HeartPulse } from 'lucide-react'
 import { useAuthStore } from '@/store/authStore'
 import { callEdgeFunction } from '@/lib/edgeFunctions'
+import { highlightGlossaryTerms } from '@/lib/highlightGlossaryTerms'
 import { Card } from '@/components/ui/Card'
 import { Button } from '@/components/ui/Button'
 import { Skeleton } from '@/components/ui/Skeleton'
@@ -65,7 +66,7 @@ export default function MedicalPage() {
             transition={{ duration: 0.4 }}
             className="mt-5 border-t border-line pt-5"
           >
-            <p className="text-ink">{reading.body}</p>
+            <p className="text-ink">{highlightGlossaryTerms(reading.body)}</p>
             <DisclaimerBanner text={reading.disclaimer} className="mt-4" />
           </motion.div>
         )}

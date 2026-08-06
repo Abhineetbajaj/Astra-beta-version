@@ -17,9 +17,11 @@ by `supabase.auth.signUp`/`signInWithPassword`/`signInWithOAuth` (client-side, v
 trigger on `auth.users` insert (works identically for email sign-up and first-time Google login —
 neither skips onboarding). Columns: `email`, `display_name` (from Google's `name`/`full_name` or
 the email sign-up form), `avatar_url` (Google's `picture`, if present), `is_premium` (denormalized
-convenience flag, kept in sync with `subscriptions` by `razorpay-webhook`). Read by
-`src/store/authStore.ts` on every auth state change; updated by `ProfilePage.tsx` and by
-`razorpay-webhook`.
+convenience flag, kept in sync with `subscriptions` by `razorpay-webhook`), `daily_digest_opt_in`
+(defaults `true` — see "Daily email digest" below), `unsubscribe_token` (opaque uuid, `default
+gen_random_uuid()`, used unauthenticated by `unsubscribe-digest` — never expose it anywhere except
+the digest email's unsubscribe link). Read by `src/store/authStore.ts` on every auth state change;
+updated by `ProfilePage.tsx` (name, digest opt-in) and by `razorpay-webhook` (`is_premium`).
 
 ## Birth profile(s)
 
@@ -60,6 +62,17 @@ Always written by an edge function (`compute-chart`, or the shared
 Read by: `src/lib/useNatalChart.ts` (direct RLS-scoped read, used by Dashboard/Chart pages) and
 `_shared/loadChartFacts.ts` (server-side, used by every Gemini-backed function to ground its
 prompt).
+
+## Transits (Gochara) — computed, never persisted
+
+Unlike the natal chart, **there is no `transits` table.** Where the planets are *today* changes
+daily, so every caller (Dashboard's "Today's Sky" card, `daily-reading`, `chat`,
+`send-daily-digest`) recomputes fresh from the current time via `src/astro-engine/transits.ts` /
+`_shared/transitFacts.ts` — cheap pure math, no DB round trip needed beyond reading the natal
+chart's ascendant sign and Moon sign. Whatever transit snapshot fed a given day's `daily_readings`
+or `chat_messages` row is archived in that row's `facts_used` jsonb (under a `"transits"` key),
+same auditability pattern as every other generated-content table — so history is preserved even
+though the live computation isn't cached.
 
 ## Reference data (static, seeded, public-read)
 
@@ -120,6 +133,25 @@ All of these are written only by their corresponding edge function (service role
 `HistoryPage.tsx` reads `daily_readings` + `compatibility_reports` + `financial_readings` +
 `medical_readings` for the current user and merges them chronologically.
 
+## Daily email digest
+
+Not a new table — reuses `daily_readings` (via `_shared/generateDailyReading.ts`, shared with the
+`daily-reading` HTTP function so the emailed content is the same idempotent row a user would see by
+opening the dashboard themselves) plus the two `profiles` columns above.
+
+- **`send-daily-digest`** (edge function) — triggered once a day by a `pg_cron` job (`cron.job`
+  name `send-daily-digest`, `30 1 * * *` = 7:00 AM IST) via `pg_net`'s `net.http_post`. No Supabase
+  session exists in that context, so it's authenticated by a shared `x-cron-secret` header instead
+  (`CRON_SECRET` edge function secret, matched against a `vault`-stored copy the cron job reads at
+  fire time) — `verify_jwt = false` in `config.toml` since the platform's own JWT gate would
+  otherwise reject the request before the function's secret check ever runs. Iterates every
+  `profiles` row with `daily_digest_opt_in = true`, skips anyone without a self `birth_profiles`
+  row (not onboarded), generates/fetches today's reading, and emails it via Resend.
+- **`unsubscribe-digest`** (edge function, public, `verify_jwt = false`) — the link in every digest
+  email. Takes `?token=<unsubscribe_token>`, flips that profile's `daily_digest_opt_in` to `false`.
+  No auth beyond possessing the token, by design — it's a one-click unsubscribe like any transactional
+  email footer.
+
 ## Required secrets and where each is consumed
 
 See CLAUDE.md's setup checklist table for status (real vs. not-yet-configured). Summary of
@@ -130,6 +162,9 @@ See CLAUDE.md's setup checklist table for status (real vs. not-yet-configured). 
 | `GEMINI_API_KEY` | `supabase/functions/_shared/gemini.ts` (server-only edge function secret) |
 | `RAZORPAY_KEY_ID` / `RAZORPAY_KEY_SECRET` | `razorpay-create-order` (Basic auth to Razorpay Orders API) |
 | `RAZORPAY_WEBHOOK_SECRET` | `razorpay-webhook` (HMAC-SHA256 signature verification) |
+| `RESEND_API_KEY` | `send-daily-digest` (Resend API auth — currently sandboxed to one recipient, see CLAUDE.md) |
+| `CRON_SECRET` | `send-daily-digest` (checked against a `vault`-stored copy the `pg_cron` job sends as `x-cron-secret`) |
+| `SITE_URL` | `send-daily-digest` (builds the "View your full dashboard" link in the email; `SUPABASE_URL` builds the unsubscribe link instead, since that's a Supabase Edge Function URL, not the frontend) |
 | `SUPABASE_URL` / `SUPABASE_SERVICE_ROLE_KEY` | auto-injected by the Supabase Edge Runtime, every function's `_shared/supabaseAdmin.ts` |
 | `VITE_SUPABASE_URL` / `VITE_SUPABASE_ANON_KEY` | `src/lib/supabaseClient.ts` (frontend, public-safe anon key) |
 | Google OAuth Client ID/Secret | Supabase Dashboard → Authentication → Providers → Google (not an env var in this codebase) |

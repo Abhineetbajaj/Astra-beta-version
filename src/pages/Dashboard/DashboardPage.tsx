@@ -1,13 +1,16 @@
 import { useCallback, useEffect, useMemo, useState } from 'react'
 import { Link } from 'react-router-dom'
 import { motion } from 'framer-motion'
-import { Compass, Heart, Briefcase, Eye, Sparkles, Lock, AlertCircle } from 'lucide-react'
+import { Compass, Heart, Briefcase, Eye, Sparkles, Lock, AlertCircle, Orbit } from 'lucide-react'
 import { useAuthStore } from '@/store/authStore'
 import { useNatalChart } from '@/lib/useNatalChart'
 import { callEdgeFunction } from '@/lib/edgeFunctions'
 import { currentDashaLords } from '@/astro-engine'
 import { computePanchang } from '@/astro-engine/panchang'
+import { computeTransits } from '@/astro-engine/transits'
 import { RASHIS } from '@/data/rashis'
+import { highlightGlossaryTerms } from '@/lib/highlightGlossaryTerms'
+import GlossaryTerm from '@/components/GlossaryTerm'
 import { Card } from '@/components/ui/Card'
 import { Skeleton } from '@/components/ui/Skeleton'
 import { Button } from '@/components/ui/Button'
@@ -18,6 +21,14 @@ import type { DailyReadingRow, WeeklyReportRow } from '@/types/db'
 function isMissingChartError(message: string | null): boolean {
   return !!message && message.includes('No chart found')
 }
+
+function ordinal(n: number): string {
+  const suffixes = ['th', 'st', 'nd', 'rd']
+  const v = n % 100
+  return `${n}${suffixes[(v - 20) % 10] ?? suffixes[v] ?? suffixes[0]}`
+}
+
+const SADE_SATI_LABEL = { rising: 'Rising phase', peak: 'Peak phase', setting: 'Setting phase' } as const
 
 const FOCUS_ICONS = [
   { key: 'focus_card', label: "Today's focus", Icon: Compass },
@@ -85,6 +96,13 @@ export default function DashboardPage() {
 
   const panchang = useMemo(() => computePanchang(new Date()), [])
 
+  const transits = useMemo(() => {
+    if (!chart) return null
+    const natalMoon = chart.placements.find((p) => p.planet === 'Moon')
+    if (!natalMoon) return null
+    return computeTransits(chart.ascendant?.rashiIndex ?? null, natalMoon.rashiIndex, new Date())
+  }, [chart])
+
   if (!selfBirthProfile) return null
 
   const active = chart ? currentDashaLords(chart.dashas, new Date()) : null
@@ -131,7 +149,7 @@ export default function DashboardPage() {
               transition={{ duration: 0.4 }}
               className="mt-4 max-w-lg text-ink-muted"
             >
-              {reading.body}
+              {highlightGlossaryTerms(reading.body)}
             </motion.p>
           )}
 
@@ -144,11 +162,15 @@ export default function DashboardPage() {
                 <span>·</span>
               </>
             )}
-            <span>{active?.maha} Mahadasha</span>
+            <span>
+              {active?.maha} <GlossaryTerm term="mahadasha">Mahadasha</GlossaryTerm>
+            </span>
             {active?.antar && (
               <>
                 <span>·</span>
-                <span>{active.antar} Antardasha</span>
+                <span>
+                  {active.antar} <GlossaryTerm term="antardasha">Antardasha</GlossaryTerm>
+                </span>
               </>
             )}
           </div>
@@ -183,6 +205,44 @@ export default function DashboardPage() {
         ))}
       </div>
 
+      {transits && (
+        <Card>
+          <div className="flex items-center gap-2 text-ink-muted">
+            <Orbit className="size-4" strokeWidth={1.75} />
+            <span className="text-xs font-medium uppercase tracking-wide">Today's sky</span>
+          </div>
+
+          {transits.sadeSati.active && transits.sadeSati.phase && (
+            <div className="mt-3 rounded-xl border border-accent/30 bg-accent/5 px-3 py-2 text-sm text-ink">
+              <GlossaryTerm term="sade sati">Sade Sati</GlossaryTerm> — Saturn transiting{' '}
+              {SADE_SATI_LABEL[transits.sadeSati.phase]} from your natal Moon.
+            </div>
+          )}
+
+          <div className="mt-3 grid gap-3 sm:grid-cols-3">
+            {(['Moon', 'Jupiter', 'Saturn'] as const).map((planet) => {
+              const p = transits.placements.find((t) => t.planet === planet)
+              if (!p) return null
+              const rashi = RASHIS[p.rashiIndex]
+              return (
+                <div key={planet} className="rounded-xl border border-line px-3 py-2.5">
+                  <p className="text-[10px] uppercase tracking-wide text-ink-faint">Transiting {planet}</p>
+                  <p className="mt-0.5 text-sm text-ink">
+                    {rashi.symbol} {rashi.name}
+                    {p.retrograde && (
+                      <span className="ml-1 text-ink-faint">
+                        (<GlossaryTerm term="retrograde">retrograde</GlossaryTerm>)
+                      </span>
+                    )}
+                  </p>
+                  <p className="text-xs text-ink-faint">{ordinal(p.houseFromMoon)} from your Moon</p>
+                </div>
+              )
+            })}
+          </div>
+        </Card>
+      )}
+
       {loadingReading && !reading && (
         <div className="grid gap-4 sm:grid-cols-2">
           {FOCUS_ICONS.map(({ key }) => (
@@ -209,7 +269,7 @@ export default function DashboardPage() {
                   <Icon className="size-4" strokeWidth={1.75} />
                   <span className="text-xs font-medium uppercase tracking-wide">{label}</span>
                 </div>
-                <p className="mt-3 text-ink">{reading[key]}</p>
+                <p className="mt-3 text-ink">{highlightGlossaryTerms(reading[key])}</p>
               </Card>
             </motion.div>
           ))}
@@ -260,7 +320,7 @@ export default function DashboardPage() {
           <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} transition={{ duration: 0.4 }} className="mt-4 space-y-3">
             {weeklyReport.body.split('\n').filter(Boolean).map((paragraph, i) => (
               <p key={i} className="text-ink-muted">
-                {paragraph}
+                {highlightGlossaryTerms(paragraph)}
               </p>
             ))}
           </motion.div>
