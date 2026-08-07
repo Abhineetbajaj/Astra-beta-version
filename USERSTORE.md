@@ -152,6 +152,32 @@ opening the dashboard themselves) plus the two `profiles` columns above.
   No auth beyond possessing the token, by design — it's a one-click unsubscribe like any transactional
   email footer.
 
+## Meditation / Listen
+
+Not personal history in the usual sense — `meditation_tracks` is a shared content library (like
+`astrologers`), and `user_meditation_history` is the one per-user table.
+
+- **`meditation_tracks`** — `category` (`today`/`weekly`/`panchang`/`need`/`mantra`), `script_text`,
+  `is_premium`, and a single `dedupe_key` (e.g. `"today:Saturn:Rahu:3:2026-08-09"`,
+  `"need:financial-blocks"`) each generator computes deterministically instead of five different
+  per-category unique constraints. `audio_url` exists but is unused in v1 — see CLAUDE.md's Known
+  gaps on why narration was deferred. **RLS gates `is_premium=true` rows directly** (`is_premium =
+  false or exists(active premium subscription for auth.uid())`) — a non-premium client can't read a
+  locked row's `script_text` even via a direct query, not just a UI-hidden state (verified live).
+  `today`/`weekly`/`panchang` tracks are generated **once per distinct combination shared across all
+  users**, not per user — e.g. every user currently running a Saturn Mahadasha with a Cancer Moon
+  gets the same "For You Today" track, generated once by `generate-meditation-tracks`, not once per
+  listener. `need`/`mantra` tracks are evergreen (one per tag/planet, generated once by
+  `generate-meditation-library`, re-run only when adding content).
+- **`user_meditation_history`** — `played_at`, `completed`, `favorited`, one row per
+  `(user_id, track_id)` (RLS: owner-only, same pattern as `birth_profiles`). Powers "Continue
+  Listening" on `/listen`.
+
+Read by `src/lib/useMeditationTracks.ts` (client hooks + direct queries — no server RPC needed,
+RLS does the gating). The "For You Today" lookup reconstructs the same `dedupe_key` format
+`generate-meditation-tracks`'s `generateTodayTracks` uses, client-side, from the user's own chart —
+see the comment on `todayDedupeKey()` for the exact format both sides must stay in sync on.
+
 ## Required secrets and where each is consumed
 
 See CLAUDE.md's setup checklist table for status (real vs. not-yet-configured). Summary of
@@ -163,7 +189,7 @@ See CLAUDE.md's setup checklist table for status (real vs. not-yet-configured). 
 | `RAZORPAY_KEY_ID` / `RAZORPAY_KEY_SECRET` | `razorpay-create-order` (Basic auth to Razorpay Orders API) |
 | `RAZORPAY_WEBHOOK_SECRET` | `razorpay-webhook` (HMAC-SHA256 signature verification) |
 | `RESEND_API_KEY` | `send-daily-digest` (Resend API auth — currently sandboxed to one recipient, see CLAUDE.md) |
-| `CRON_SECRET` | `send-daily-digest` (checked against a `vault`-stored copy the `pg_cron` job sends as `x-cron-secret`) |
+| `CRON_SECRET` | `send-daily-digest`, `generate-meditation-tracks`, `generate-meditation-library` (all checked against the same `vault`-stored copy the relevant `pg_cron` job sends as `x-cron-secret`; `generate-meditation-library` is manually invoked but reuses this secret rather than adding a new one) |
 | `SITE_URL` | `send-daily-digest` (builds the "View your full dashboard" link in the email; `SUPABASE_URL` builds the unsubscribe link instead, since that's a Supabase Edge Function URL, not the frontend) |
 | `SUPABASE_URL` / `SUPABASE_SERVICE_ROLE_KEY` | auto-injected by the Supabase Edge Runtime, every function's `_shared/supabaseAdmin.ts` |
 | `VITE_SUPABASE_URL` / `VITE_SUPABASE_ANON_KEY` | `src/lib/supabaseClient.ts` (frontend, public-safe anon key) |

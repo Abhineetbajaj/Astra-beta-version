@@ -192,3 +192,27 @@ export interface WalletTransactionRow {
   label: string
   created_at: string
 }
+
+export interface MeditationTrackRow {
+  id: string
+  category: 'today' | 'weekly' | 'panchang' | 'need' | 'mantra'
+  title: string
+  script_text: string
+  audio_url: string | null
+  planet_context: string | null
+  need_tag: string | null
+  panchang_event: string | null
+  valid_date: string | null
+  is_premium: boolean
+  dedupe_key: string
+  created_at: string
+}
+
+export interface UserMeditationHistoryRow {
+  id: string
+  user_id: string
+  track_id: string
+  played_at: string
+  completed: boolean
+  favorited: boolean
+}

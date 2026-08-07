@@ -109,3 +109,23 @@ export const CLASSICAL_VOICE_DIRECTIVE =
   'concrete plain-language takeaway in the same sentence or the next one — never a separate ' +
   'disclaimer-style bolt-on, and never so watered down that the astrology disappears. The specificity ' +
   'is the whole point; translate it, don\'t drop it.'
+
+/**
+ * Voice directive for meditation/reflection scripts (`generate-meditation-tracks`,
+ * `generate-meditation-library`) — deliberately NOT `CLASSICAL_VOICE_DIRECTIVE`. That directive
+ * demands a named planet/house/sign in nearly every sentence, which reads as an analytical
+ * chart-reading, not a meditation. These scripts still ground themselves in one or two real facts
+ * (never inventing astrology — same `factsGroundingPreamble()` rule as everywhere else), but the
+ * prose itself should read as calm, spacious, reflective — closer to a guided meditation than a
+ * reading. Named facts set the frame at the start; the rest of the script doesn't need to keep
+ * citing them.
+ */
+export const MEDITATIVE_VOICE_DIRECTIVE =
+  'Write a short guided reflection, not a chart reading. Ground it in the one or two real facts given ' +
+  '— name them once, early, to set the frame (e.g. "In this Saturn Mahadasha..." or "As Jupiter moves ' +
+  'through your reflective season...") — then let the rest of the script breathe as calm, spacious, ' +
+  'second-person prose, the way a real meditation teacher speaks: pauses, simple concrete imagery, an ' +
+  'invitation rather than an instruction. Do not stack multiple technical citations back to back. ' +
+  'Avoid therapy-speak clichés ("hold space", "lean into it", "trust the journey") — ground the calm in ' +
+  'the specific astrological frame you opened with, not generic wellness language. End with one gentle, ' +
+  'concrete thought to carry forward, not a call to action.'

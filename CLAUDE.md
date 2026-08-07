@@ -121,6 +121,12 @@ src/
                          transits.ts computes Gochara (today's real planetary positions relative to
                          a natal chart) — pure composition of the same ephemeris/ayanamsa/house
                          functions, no new astronomy code, never persisted (see architecture rule 9)
+                         panchang.ts computes Tithi/Nakshatra/Yoga/Vara for any date; panchangEvents.ts
+                         (built for "Listen") detects Ekadashi/Amavasya/Purnima (exact, from tithi
+                         naming), Sankranti (Sun's sidereal sign change), and Navratri (a documented
+                         Gregorian-month heuristic, not true masa/lunar-month math — see Known gaps)
+                         over a date range — no external calendar API, same "compute it, don't
+                         source it externally" philosophy as the rest of the engine
   data/                 static reference data (rashis, nakshatras, dasha sequence, astrologer personas)
   lib/
     supabaseClient.ts    Supabase client + isBackendConfigured guard
@@ -178,6 +184,15 @@ supabase/
                             Resend; verify_jwt=false, authenticates via x-cron-secret header instead
     unsubscribe-digest/    public link clicked from the email; verify_jwt=false, authenticates via
                             the profile's unsubscribe_token query param
+    generate-meditation-tracks/    pg_cron-triggered daily (2:00 UTC) — "Listen" section's
+                            time-triggered categories: For You Today (personalized, but generated
+                            once per distinct dasha+natal-Moon-sign combination across all users,
+                            not per user), This Week's Ritual, Panchang Calendar Drops. verify_jwt=
+                            false, same x-cron-secret pattern as send-daily-digest.
+    generate-meditation-library/   manually invoked (not scheduled) — the evergreen "Browse by
+                            Need" (7 tags) and "Graha Mantras" (9 planets) libraries. Takes an
+                            optional { maxItems } body param and is idempotent via meditation_
+                            tracks.dedupe_key — re-invoke to resume a batch that hit a limit.
     razorpay-create-order/ creates a Razorpay order for wallet_topup or premium_subscription
     razorpay-webhook/      HMAC-verified; the ONLY place credits/Premium are actually granted
   .env.example            documents GEMINI_API_KEY / RAZORPAY_* — copy to .env for local dev
@@ -202,12 +217,14 @@ Live project: `uejyelsygtgfkufugwvw` (Supabase, `ap-south-1`/Mumbai).
 | Astro engine (client + server) | ✅ Real, tested, no external dependency |
 | `GEMINI_API_KEY` | ✅ Live secret, **end-to-end verified**: compute-chart → daily-reading, chat, compatibility, financial-reading, medical-reading, weekly-report all produce real, grounded, high-quality prose against production data |
 | DB schema + RLS + seed data | ✅ **Pushed to the live project** via `supabase db push` — 3 migrations applied cleanly against real Postgres |
-| Edge functions | ✅ **Deployed** — all 11 live at `https://uejyelsygtgfkufugwvw.supabase.co/functions/v1/<name>`, every one exercised end-to-end with a real test account (signup → onboarding → chart → all Gemini-backed functions → cleanup) |
+| Edge functions | ✅ **Deployed** — all 14 live at `https://uejyelsygtgfkufugwvw.supabase.co/functions/v1/<name>`, every one exercised end-to-end with a real test account (signup → onboarding → chart → all Gemini-backed functions → cleanup) |
 | `VITE_SUPABASE_URL` / `VITE_SUPABASE_ANON_KEY` | ✅ Set in `.env`, dev server picks them up |
 | Google OAuth | ✅ **Enabled and end-to-end verified** — Google Cloud OAuth client created, wired into Supabase via the Management API, real sign-in tested through to onboarding |
 | Razorpay account/keys | ❌ Not set — `razorpay-create-order`/`razorpay-webhook` are deployed but will throw clearly (not silently mock) until `RAZORPAY_KEY_ID`/`RAZORPAY_KEY_SECRET`/`RAZORPAY_WEBHOOK_SECRET` are set via `supabase secrets set` |
 | Real transits (Gochara) | ✅ Live — `daily-reading`, `chat`, and the Dashboard "Today's Sky" card all ground content in today's actual planetary positions; Sade Sati/Guru Gochar math hand-verified against the real, publicly-known 2025-2027 Saturn-in-Pisces transit window |
 | `RESEND_API_KEY` / `send-daily-digest` cron | ⚠️ **Live but sandboxed** — `pg_cron` fires daily, the function runs and generates real readings, but Resend's unverified-domain sandbox only delivers to the account owner's own email (`surya.sharma6066@gmail.com`); every other opted-in user's send fails with a clear `validation_error`, confirmed live (11 profiles, 1 sent, rest failed on this restriction). **Verify a domain at resend.com/domains and switch the `from` address off `onboarding@resend.dev` before this reaches real family testers.** |
+| "Listen" meditation section | ✅ Deployed, schema live, RLS-gating verified live (a non-premium account's direct API query only ever sees the one free sample row — confirmed, not just UI-hidden). ⚠️ **Content generation is currently gated by a hard wall**, see the `GEMINI_API_KEY` quota row below — `generate-meditation-library` (evergreen need/mantra library) finished a full run; `generate-meditation-tracks` (today/weekly/panchang, now on a daily 2:00 UTC cron) has **not yet completed a successful run** — it hit the same daily quota before producing any rows. Re-run it (or wait for the next quota reset) before `/listen`'s "For You Today"/"This Week's Ritual" sections will show real content instead of the "still being prepared" placeholder. |
+| `GEMINI_API_KEY` daily quota | ⚠️ **The free Gemini tier caps at 20 requests/day** (separate from the smaller per-minute cap already worked around with pacing in `generate-meditation-library`/`generate-meditation-tracks`) — discovered live when `generate-meditation-tracks` 429'd with `GenerateRequestsPerDayPerProjectPerModel-FreeTier`. **This budget is shared across every Gemini-backed feature in the whole app** — daily-reading, chat, financial/medical readings, weekly-report, the digest, and now Listen's generators all draw from the same 20/day, project-wide, not per-user. With ~10 active family accounts each potentially triggering a few calls a day, this is realistically already tight and will cause silent-looking failures (a function just 500s with a 429 body) once usage climbs. **Upgrading to a paid Gemini tier is the real fix** — flag to the user before this surprises them as "the app is broken." |
 | Prokerala | Deliberately unused — see above |
 
 Remaining to fully close out: set the three `RAZORPAY_*` secrets once you have real keys, point
@@ -253,6 +270,26 @@ Everything else is live and verified, not just written.
 - **Two stale test accounts remain in the live `profiles` table**: `astra.debugtest.7734@gmail.com`
   and `astra.debugtest.9921@gmail.com` (from earlier ad-hoc testing). Left in place deliberately —
   flagged, not deleted, since ownership/purpose wasn't confirmed.
+- **"Listen" (meditation/reflection section) ships text-only in this pass — no audio narration.**
+  The original spec assumed `edge-tts`, a Python-only, unofficial, reverse-engineered client for
+  Microsoft Edge's internal Read Aloud service — not an official API, doesn't run in this project's
+  Deno backend, and carries real ToS/reliability risk for a paid product. `meditation_tracks.
+  audio_url` stays a nullable column so real narration (most likely an official paid TTS API) can
+  be added later without a schema change. Also English-only, matching the rest of the app — no
+  multilingual system exists here.
+- **"Listen"'s weekly-ritual theme detection is scoped, not exhaustive**: it checks Saturn/Jupiter
+  sidereal sign changes and retrograde-station flips, falling back to the transiting Moon's
+  nakshatra. It does **not** detect eclipses (would need real Sun-Moon-node alignment math beyond
+  what `meanNode.ts`'s mean-node approximation supports) — a documented gap, not a silent omission.
+- **"Listen"'s Navratri detection is a Gregorian-month heuristic** (Shukla Paksha Pratipada falling
+  in March/April or September/October), not true luni-solar masa (lunar month) calculation, since
+  no masa calculator exists in this engine yet. Ekadashi/Amavasya/Purnima/Sankranti are exact.
+- **"Listen"'s premium gating gives every category exactly one free sample except For You Today/
+  This Week's Ritual/Panchang, which are free for everyone** — a deliberate deviation from the
+  original spec's "one free sample per category including the time-triggered ones." Reasoning:
+  those three are the daily/weekly retention hook (one shared item, not a browsable library), and
+  the real premium value is the evergreen need/mantra library — flag to the user if the intent was
+  actually to gate the daily hook content too, since that's a product call, not a technical one.
 
 ## Conventions
 

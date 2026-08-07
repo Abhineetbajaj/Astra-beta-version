@@ -399,6 +399,15 @@ verify_jwt = false
 [functions.send-daily-digest]
 verify_jwt = false
 
+# Same reasoning as send-daily-digest above: generate-meditation-tracks is pg_cron-triggered (no
+# Supabase session), and generate-meditation-library is manually invoked via curl with the same
+# CRON_SECRET, not a browser session either.
+[functions.generate-meditation-tracks]
+verify_jwt = false
+
+[functions.generate-meditation-library]
+verify_jwt = false
+
 [analytics]
 enabled = true
 port = 54327
