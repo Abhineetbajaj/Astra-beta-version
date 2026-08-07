@@ -23,6 +23,7 @@ export default function ChatPage() {
   const [draft, setDraft] = useState('')
   const [thinking, setThinking] = useState(false)
   const [error, setError] = useState<string | null>(null)
+  const [failedMessage, setFailedMessage] = useState<string | null>(null)
   const endRef = useRef<HTMLDivElement>(null)
 
   useEffect(() => {
@@ -42,15 +43,21 @@ export default function ChatPage() {
   async function send(text: string) {
     if (!text.trim() || thinking) return
     setError(null)
+    setFailedMessage(null)
     setDraft('')
     setThinking(true)
     // Optimistic local echo — the real row (with server-assigned id) replaces this on response.
-    setMessages((m) => [...m, { id: `pending-${Date.now()}`, user_id: '', role: 'user', content: text, created_at: new Date().toISOString() }])
+    const pendingId = `pending-${Date.now()}`
+    setMessages((m) => [...m, { id: pendingId, user_id: '', role: 'user', content: text, created_at: new Date().toISOString() }])
 
     try {
       const { message } = await callEdgeFunction<{ message: ChatMessageRow }>('chat', { message: text })
       setMessages((m) => [...m, message])
     } catch (err) {
+      // Roll the optimistic bubble back rather than leaving the question hanging with no reply —
+      // the server doesn't persist it on failure either, so the two stay consistent.
+      setMessages((m) => m.filter((msg) => msg.id !== pendingId))
+      setFailedMessage(text)
       setError(err instanceof Error ? err.message : 'Something went wrong asking Astra.')
     } finally {
       setThinking(false)
@@ -126,7 +133,20 @@ export default function ChatPage() {
         </div>
       )}
 
-      {error && <p className="pb-2 text-sm text-negative">{error}</p>}
+      {error && (
+        <div className="mb-3 rounded-xl border border-negative/30 bg-negative/5 px-4 py-3">
+          <p className="text-sm text-negative">{error}</p>
+          {failedMessage && (
+            <button
+              onClick={() => send(failedMessage)}
+              className="mt-2 text-sm text-ink-muted underline hover:text-ink"
+              disabled={thinking}
+            >
+              Retry that question
+            </button>
+          )}
+        </div>
+      )}
 
       <form onSubmit={handleSubmit} className="flex items-center gap-2 border-t border-line pt-4">
         <input

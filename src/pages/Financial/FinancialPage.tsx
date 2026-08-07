@@ -43,6 +43,7 @@ export default function FinancialPage() {
 
   const [personalReading, setPersonalReading] = useState<FinancialReadingRow | null>(null)
   const [personalLoading, setPersonalLoading] = useState(false)
+  const [loadingExistingPersonal, setLoadingExistingPersonal] = useState(true)
   const [personalError, setPersonalError] = useState<string | null>(null)
 
   const [companies, setCompanies] = useState<CompanyProfileRow[]>([])
@@ -62,7 +63,7 @@ export default function FinancialPage() {
   const [companyReadingError, setCompanyReadingError] = useState<string | null>(null)
 
   useEffect(() => {
-    if (!session) return
+    if (!session) return setLoadingCompanies(false)
     supabase
       .from('company_profiles')
       .select('*')
@@ -72,6 +73,30 @@ export default function FinancialPage() {
         setCompanies((data as CompanyProfileRow[]) ?? [])
         setLoadingCompanies(false)
       })
+  }, [session])
+
+  // Show the most recent already-generated personal reading rather than always demanding a fresh
+  // Gemini call — the AI budget is shared across every feature and user. "Generate a fresh one"
+  // stays available below.
+  useEffect(() => {
+    if (!session) return setLoadingExistingPersonal(false)
+    let cancelled = false
+    supabase
+      .from('financial_readings')
+      .select('*')
+      .eq('user_id', session.user.id)
+      .eq('kind', 'personal')
+      .order('created_at', { ascending: false })
+      .limit(1)
+      .maybeSingle()
+      .then(({ data }) => {
+        if (cancelled) return
+        if (data) setPersonalReading(data as FinancialReadingRow)
+        setLoadingExistingPersonal(false)
+      })
+    return () => {
+      cancelled = true
+    }
   }, [session])
 
   async function generatePersonal() {
@@ -174,11 +199,28 @@ export default function FinancialPage() {
       <Card>
         <h2 className="font-display text-lg">Your personal wealth reading</h2>
         <p className="mt-1 text-sm text-ink-muted">Based on your existing birth chart.</p>
-        <Button variant="accent" size="lg" className="mt-4" onClick={generatePersonal} disabled={personalLoading}>
-          {personalLoading ? 'Reading your chart…' : 'Generate my wealth reading'}
+        <Button
+          variant={personalReading ? 'outline' : 'accent'}
+          size="lg"
+          className="mt-4"
+          onClick={generatePersonal}
+          disabled={personalLoading || loadingExistingPersonal}
+        >
+          {personalLoading
+            ? 'Reading your chart…'
+            : personalReading
+              ? 'Generate a fresh reading'
+              : 'Generate my wealth reading'}
         </Button>
-        {personalError && <p className="mt-3 text-sm text-negative">{personalError}</p>}
-        {personalLoading && !personalReading && (
+        {personalError && (
+          <div className="mt-3 rounded-xl border border-negative/30 bg-negative/5 px-4 py-3">
+            <p className="text-sm text-negative">{personalError}</p>
+            <button onClick={generatePersonal} className="mt-2 text-sm text-ink-muted underline hover:text-ink">
+              Try again
+            </button>
+          </div>
+        )}
+        {(personalLoading || loadingExistingPersonal) && !personalReading && (
           <div className="mt-5 space-y-2 border-t border-line pt-5">
             <Skeleton className="h-4 w-full" />
             <Skeleton className="h-4 w-11/12" />

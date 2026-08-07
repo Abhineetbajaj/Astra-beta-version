@@ -104,6 +104,35 @@ export function useUpcomingPanchangTrack(): MeditationTrackRow | null | undefine
   return track
 }
 
+/**
+ * Which evergreen library tracks this user can actually open. RLS is the source of truth — a
+ * non-premium user's query simply doesn't return locked rows — so "accessible" is just "came back
+ * from the query", rather than the UI second-guessing subscription state itself.
+ */
+export function useAccessibleLibraryKeys(): { keys: Set<string>; loading: boolean } {
+  const [keys, setKeys] = useState<Set<string>>(new Set())
+  const [loading, setLoading] = useState(true)
+
+  useEffect(() => {
+    let cancelled = false
+    supabase
+      .from('meditation_tracks')
+      .select('category, need_tag, planet_context')
+      .in('category', ['need', 'mantra'])
+      .then(({ data }) => {
+        if (cancelled) return
+        const rows = (data ?? []) as { category: string; need_tag: string | null; planet_context: string | null }[]
+        setKeys(new Set(rows.map((r) => (r.category === 'need' ? r.need_tag : r.planet_context)).filter(Boolean) as string[]))
+        setLoading(false)
+      })
+    return () => {
+      cancelled = true
+    }
+  }, [])
+
+  return { keys, loading }
+}
+
 /** Looks up a single evergreen track by need tag or mantra planet — used when a tile is opened, not for the grid itself (the grid renders from the static taxonomy in meditationCategories.ts so locked tiles still show). */
 export async function fetchMeditationTrack(
   category: 'need' | 'mantra',

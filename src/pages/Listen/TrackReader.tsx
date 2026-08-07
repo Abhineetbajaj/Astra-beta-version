@@ -7,8 +7,9 @@ import { logMeditationPlay, toggleMeditationFavorite } from '@/lib/useMeditation
 import type { MeditationTrackRow } from '@/types/db'
 
 function caption(track: MeditationTrackRow): string | null {
-  if (track.need_tag) return `Framed through ${track.planet_context}`
+  if (track.need_tag && track.planet_context) return `Framed through ${track.planet_context}`
   if (track.panchang_event) return `In observance of ${track.panchang_event}`
+  if (track.category === 'mantra' && track.planet_context) return `${track.planet_context} beej mantra`
   if (track.planet_context) return `Grounded in your ${track.planet_context} placement`
   return null
 }

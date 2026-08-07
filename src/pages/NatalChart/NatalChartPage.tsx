@@ -94,7 +94,7 @@ export default function NatalChartPage() {
         <div>
           <p className="text-xs uppercase tracking-wide text-ink-faint">Full natal chart</p>
           <h1 className="mt-1 font-display text-4xl">Your Vedic birth chart</h1>
-          <p className="mt-2 max-w-xl text-ink-muted">{computationBasis}</p>
+          {computationBasis && <p className="mt-2 max-w-xl text-ink-muted">{computationBasis}</p>}
         </div>
 
         <div className="flex items-center gap-1 rounded-full border border-line-strong p-1 text-sm">

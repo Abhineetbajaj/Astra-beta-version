@@ -6,9 +6,16 @@
 import { corsHeaders, errorResponse, jsonResponse } from '../_shared/cors.ts'
 import { requireUser } from '../_shared/supabaseAdmin.ts'
 
-function requireEnv(name: string): string {
+// Razorpay keys legitimately aren't configured yet (see CLAUDE.md's setup checklist). That's a
+// known state, not a crash — but the user-facing message must never be a raw env-var name, which
+// is both meaningless to them and leaks internal config. The real reason is still logged
+// server-side for whoever is actually setting this up.
+function requireRazorpayEnv(name: string): string {
   const value = Deno.env.get(name)
-  if (!value) throw new Error(`Missing required environment variable: ${name}`)
+  if (!value) {
+    console.error(`Razorpay is not configured: missing ${name}. Set it with 'supabase secrets set ${name}=...'.`)
+    throw new Error('Payments are not set up yet — this is a preview build. Nothing has been charged.')
+  }
   return value
 }
 
@@ -28,8 +35,8 @@ Deno.serve(async (req) => {
       return errorResponse('amountInPaise must be a positive integer')
     }
 
-    const keyId = requireEnv('RAZORPAY_KEY_ID')
-    const keySecret = requireEnv('RAZORPAY_KEY_SECRET')
+    const keyId = requireRazorpayEnv('RAZORPAY_KEY_ID')
+    const keySecret = requireRazorpayEnv('RAZORPAY_KEY_SECRET')
     const basicAuth = btoa(`${keyId}:${keySecret}`)
 
     const res = await fetch('https://api.razorpay.com/v1/orders', {

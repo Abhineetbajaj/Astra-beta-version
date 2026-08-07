@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react'
+import { useEffect, useRef, useState } from 'react'
 import { motion } from 'framer-motion'
 import { Headphones, Lock, Sparkles } from 'lucide-react'
 import { Link } from 'react-router-dom'
@@ -9,6 +9,7 @@ import {
   useWeeklyMeditationTrack,
   useUpcomingPanchangTrack,
   useMeditationHistory,
+  useAccessibleLibraryKeys,
   fetchMeditationTrack,
 } from '@/lib/useMeditationTracks'
 import { MEDITATION_CATEGORIES, NEED_TAGS, MANTRA_PLANETS } from '@/data/meditationCategories'
@@ -22,14 +23,14 @@ const DISCLAIMER =
   'Listen is a reflective, spiritual practice — not a substitute for medical or mental health care. If you\'re struggling, please reach out to a real professional.'
 const DISCLAIMER_DISMISSED_KEY = 'astra-listen-disclaimer-dismissed'
 
-function TeaserTile({ label, onTap }: { label: string; onTap: () => void }) {
+function TeaserTile({ label, locked, onTap }: { label: string; locked: boolean; onTap: () => void }) {
   return (
     <button
       onClick={onTap}
       className="flex items-center justify-between rounded-xl border border-line px-4 py-3 text-left text-sm hover:border-line-strong hover:bg-paper-raised"
     >
       {label}
-      <Lock className="size-3.5 text-ink-faint" strokeWidth={1.75} />
+      {locked && <Lock className="size-3.5 text-ink-faint" strokeWidth={1.75} />}
     </button>
   )
 }
@@ -45,13 +46,21 @@ export default function ListenPage() {
   const panchangTrack = useUpcomingPanchangTrack()
   const history = useMeditationHistory(session?.user.id)
 
+  const { keys: accessibleKeys } = useAccessibleLibraryKeys()
   const [selected, setSelected] = useState<MeditationTrackRow | null>(null)
   const [lockedTap, setLockedTap] = useState<string | null>(null)
   const [showDisclaimer, setShowDisclaimer] = useState(false)
+  const readerRef = useRef<HTMLDivElement>(null)
 
   useEffect(() => {
     if (!localStorage.getItem(DISCLAIMER_DISMISSED_KEY)) setShowDisclaimer(true)
   }, [])
+
+  // The reader and the upsell both render at the top of the page while the tiles that open them
+  // are near the bottom — without this, tapping a tile looks like nothing happened at all.
+  useEffect(() => {
+    if (selected || lockedTap) readerRef.current?.scrollIntoView({ behavior: 'smooth', block: 'start' })
+  }, [selected, lockedTap])
 
   function dismissDisclaimer() {
     localStorage.setItem(DISCLAIMER_DISMISSED_KEY, '1')
@@ -60,13 +69,15 @@ export default function ListenPage() {
 
   async function openLibraryTrack(category: 'need' | 'mantra', key: string, label: string) {
     setLockedTap(null)
+    setSelected(null)
     const track = await fetchMeditationTrack(category, key)
     if (track) {
       setSelected(track)
-    } else if (!isPremium) {
+    } else {
+      // RLS hides premium rows from non-premium users, so a missing row means either locked or
+      // not-yet-generated. Either way the user gets a real explanation, never a dead tap.
       setLockedTap(label)
     }
-    // else: content genuinely not generated yet — silently no-op rather than a broken empty state.
   }
 
   if (!session) return null
@@ -96,25 +107,35 @@ export default function ListenPage() {
         </div>
       )}
 
-      {selected && (
-        <TrackReader track={selected} userId={session.user.id} onClose={() => setSelected(null)} />
-      )}
+      <div ref={readerRef} className="scroll-mt-24">
+        {selected && <TrackReader track={selected} userId={session.user.id} onClose={() => setSelected(null)} />}
 
-      {lockedTap && !selected && (
-        <Card className="border-accent/30">
-          <div className="flex items-center justify-between">
-            <div className="flex items-center gap-2">
-              <Lock className="size-4 text-accent" strokeWidth={1.75} />
-              <p className="text-sm text-ink">
-                <span className="font-medium">{lockedTap}</span> is part of Astra Premium.
-              </p>
+        {lockedTap && !selected && (
+          <Card className="border-accent/30">
+            <div className="flex flex-wrap items-center justify-between gap-3">
+              <div className="flex items-center gap-2">
+                <Lock className="size-4 text-accent" strokeWidth={1.75} />
+                <p className="text-sm text-ink">
+                  {isPremium ? (
+                    <>
+                      <span className="font-medium">{lockedTap}</span> hasn't been written yet — check back soon.
+                    </>
+                  ) : (
+                    <>
+                      <span className="font-medium">{lockedTap}</span> is part of Astra Premium.
+                    </>
+                  )}
+                </p>
+              </div>
+              {!isPremium && (
+                <Link to="/pricing" className="text-sm text-accent hover:underline">
+                  Upgrade →
+                </Link>
+              )}
             </div>
-            <Link to="/pricing" className="text-sm text-accent hover:underline">
-              Upgrade →
-            </Link>
-          </div>
-        </Card>
-      )}
+          </Card>
+        )}
+      </div>
 
       {history.length > 0 && (
         <section>
@@ -137,7 +158,13 @@ export default function ListenPage() {
         <h2 className="font-display text-lg">{MEDITATION_CATEGORIES[0].label}</h2>
         {todayTrack === undefined && <Skeleton className="mt-3 h-16 w-full" />}
         {todayTrack === null && (
-          <p className="mt-3 text-sm text-ink-faint">Today's reflection is still being prepared — check back soon.</p>
+          <div className="mt-3 rounded-xl border border-dashed border-line px-4 py-3.5">
+            <p className="text-sm text-ink-muted">
+              Today's reflection is still being written — it's shaped around your current dasha period and the
+              planets moving through your chart right now.
+            </p>
+            <p className="mt-1 text-xs text-ink-faint">New reflections are prepared each morning.</p>
+          </div>
         )}
         {todayTrack && (
           <motion.button
@@ -165,7 +192,14 @@ export default function ListenPage() {
             <span className="text-sm">{weeklyTrack.title}</span>
           </button>
         )}
-        {weeklyTrack === null && <p className="mt-3 text-sm text-ink-faint">This week's ritual is being prepared.</p>}
+        {weeklyTrack === null && (
+          <div className="mt-3 rounded-xl border border-dashed border-line px-4 py-3.5">
+            <p className="text-sm text-ink-muted">
+              This week's ritual is still being written — it follows the week's major planetary movement, like a
+              sign change, a retrograde turning, or the nakshatra the Moon is passing through.
+            </p>
+          </div>
+        )}
       </section>
 
       {panchangTrack && (
@@ -184,7 +218,12 @@ export default function ListenPage() {
         <h2 className="font-display text-lg">{MEDITATION_CATEGORIES[3].label}</h2>
         <div className="mt-3 grid gap-2 sm:grid-cols-2">
           {NEED_TAGS.map((need) => (
-            <TeaserTile key={need.key} label={need.label} onTap={() => openLibraryTrack('need', need.key, need.label)} />
+            <TeaserTile
+              key={need.key}
+              label={need.label}
+              locked={!accessibleKeys.has(need.key)}
+              onTap={() => openLibraryTrack('need', need.key, need.label)}
+            />
           ))}
         </div>
       </section>
@@ -196,10 +235,11 @@ export default function ListenPage() {
             <button
               key={m.planet}
               onClick={() => openLibraryTrack('mantra', m.planet, `${m.planet} mantra`)}
+              title={m.whenToUse}
               className="flex flex-col items-center gap-1 rounded-xl border border-line px-3 py-4 text-center hover:border-line-strong hover:bg-paper-raised"
             >
               <span className="text-sm font-medium">{m.planet}</span>
-              <Lock className="size-3 text-ink-faint" strokeWidth={1.75} />
+              {!accessibleKeys.has(m.planet) && <Lock className="size-3 text-ink-faint" strokeWidth={1.75} />}
             </button>
           ))}
         </div>

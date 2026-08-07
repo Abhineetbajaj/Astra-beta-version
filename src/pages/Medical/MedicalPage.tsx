@@ -1,7 +1,8 @@
-import { useState } from 'react'
+import { useEffect, useState } from 'react'
 import { motion } from 'framer-motion'
 import { HeartPulse } from 'lucide-react'
 import { useAuthStore } from '@/store/authStore'
+import { supabase } from '@/lib/supabaseClient'
 import { callEdgeFunction } from '@/lib/edgeFunctions'
 import { highlightGlossaryTerms } from '@/lib/highlightGlossaryTerms'
 import { Card } from '@/components/ui/Card'
@@ -14,10 +15,35 @@ const DISCLAIMER =
   'Not medical advice or diagnosis — a traditional astrological perspective only. Consult a healthcare professional for real health concerns.'
 
 export default function MedicalPage() {
+  const session = useAuthStore((s) => s.session)
   const selfBirthProfile = useAuthStore((s) => s.selfBirthProfile)
   const [reading, setReading] = useState<MedicalReadingRow | null>(null)
   const [loading, setLoading] = useState(false)
+  const [loadingExisting, setLoadingExisting] = useState(true)
   const [error, setError] = useState<string | null>(null)
+
+  // Show the most recent already-generated reading instead of always demanding a fresh Gemini call
+  // — the AI budget is shared across every feature and user, so never spend it re-deriving
+  // something already saved. "Generate a new one" stays available below.
+  useEffect(() => {
+    if (!session) return setLoadingExisting(false)
+    let cancelled = false
+    supabase
+      .from('medical_readings')
+      .select('*')
+      .eq('user_id', session.user.id)
+      .order('created_at', { ascending: false })
+      .limit(1)
+      .maybeSingle()
+      .then(({ data }) => {
+        if (cancelled) return
+        if (data) setReading(data as MedicalReadingRow)
+        setLoadingExisting(false)
+      })
+    return () => {
+      cancelled = true
+    }
+  }, [session])
 
   async function generate() {
     if (!selfBirthProfile) return
@@ -48,11 +74,18 @@ export default function MedicalPage() {
       <Card>
         <h2 className="font-display text-lg">Your wellness reading</h2>
         <p className="mt-1 text-sm text-ink-muted">Soft, reflective language — never a diagnosis.</p>
-        <Button variant="accent" size="lg" className="mt-4" onClick={generate} disabled={loading}>
-          {loading ? 'Reading your chart…' : 'Generate my wellness reading'}
+        <Button variant={reading ? 'outline' : 'accent'} size="lg" className="mt-4" onClick={generate} disabled={loading || loadingExisting}>
+          {loading ? 'Reading your chart…' : reading ? 'Generate a fresh reading' : 'Generate my wellness reading'}
         </Button>
-        {error && <p className="mt-3 text-sm text-negative">{error}</p>}
-        {loading && !reading && (
+        {error && (
+          <div className="mt-3 rounded-xl border border-negative/30 bg-negative/5 px-4 py-3">
+            <p className="text-sm text-negative">{error}</p>
+            <button onClick={generate} className="mt-2 text-sm text-ink-muted underline hover:text-ink">
+              Try again
+            </button>
+          </div>
+        )}
+        {(loading || loadingExisting) && !reading && (
           <div className="mt-5 space-y-2 border-t border-line pt-5">
             <Skeleton className="h-4 w-full" />
             <Skeleton className="h-4 w-11/12" />

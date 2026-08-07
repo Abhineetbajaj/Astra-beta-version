@@ -8,13 +8,15 @@ import { Card } from '@/components/ui/Card'
 import { Button } from '@/components/ui/Button'
 import { Badge } from '@/components/ui/Badge'
 
+// Only list what Premium actually gates today. The daily reading, compatibility, and history are
+// all available on the free plan — advertising them as Premium perks would be false. Likewise
+// "cancel anytime" is omitted: this is a one-time 30-day access purchase, not a recurring
+// subscription with a cancel flow (see CLAUDE.md's known gaps).
 const FEATURES = [
-  'Full personalized daily reading',
-  'Weekly deep-dive & transit forecast',
-  'Compatibility reports with anyone',
-  'Financial & medical astrology readings',
-  'Reading history & saved insights',
-  'Cancel anytime',
+  'Weekly deep-dive report',
+  'Financial astrology readings',
+  'Wellness astrology readings',
+  'The full Listen meditation library',
 ]
 
 const PREMIUM_PRICE_INR = 749
@@ -85,7 +87,7 @@ export default function PricingPage() {
           <p className="font-display text-4xl">
             ₹{PREMIUM_PRICE_INR} <span className="text-lg font-normal text-ink-muted">/ month</span>
           </p>
-          <p className="mt-1 text-sm text-ink-faint">Billed monthly via Razorpay.</p>
+          <p className="mt-1 text-sm text-ink-faint">One-time payment for 30 days of access, via Razorpay.</p>
 
           <ul className="mt-6 space-y-3">
             {FEATURES.map((f) => (

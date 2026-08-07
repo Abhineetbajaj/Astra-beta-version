@@ -3,6 +3,7 @@ import { useAuthStore } from '@/store/authStore'
 import { supabase } from '@/lib/supabaseClient'
 import { Card } from '@/components/ui/Card'
 import { Badge } from '@/components/ui/Badge'
+import { Skeleton } from '@/components/ui/Skeleton'
 import type { CompatibilityReportRow, DailyReadingRow, FinancialReadingRow, MedicalReadingRow } from '@/types/db'
 
 type HistoryEntry =
@@ -24,7 +25,7 @@ export default function HistoryPage() {
   const [loading, setLoading] = useState(true)
 
   useEffect(() => {
-    if (!session) return
+    if (!session) return setLoading(false)
     const userId = session.user.id
     Promise.all([
       supabase.from('daily_readings').select('*').eq('user_id', userId).order('created_at', { ascending: false }).limit(20),
@@ -47,10 +48,22 @@ export default function HistoryPage() {
     <div className="mx-auto max-w-2xl">
       <p className="text-xs uppercase tracking-wide text-ink-faint">History</p>
       <h1 className="mt-1 font-display text-4xl">Your reading history</h1>
-      <p className="mt-2 text-ink-muted">Every reading Astra has generated for you, in one place.</p>
+      <p className="mt-2 text-ink-muted">
+        Your saved daily, compatibility, financial, and wellness readings, newest first.
+      </p>
 
       <div className="mt-8 space-y-3">
-        {loading && <p className="text-ink-muted">Loading…</p>}
+        {loading && (
+          <>
+            {[0, 1, 2].map((i) => (
+              <Card key={i}>
+                <Skeleton className="h-4 w-28" />
+                <Skeleton className="mt-3 h-4 w-full" />
+                <Skeleton className="mt-1.5 h-4 w-4/5" />
+              </Card>
+            ))}
+          </>
+        )}
         {!loading && entries.length === 0 && <p className="text-ink-muted">Nothing yet — visit Today or Ask Astra to generate your first reading.</p>}
         {entries.map((entry) => (
           <Card key={`${entry.kind}-${entry.row.id}`}>
@@ -60,7 +73,7 @@ export default function HistoryPage() {
                 {new Date(entry.at).toLocaleDateString('en-US', { weekday: 'long', day: 'numeric', month: 'short' })}
               </p>
             </div>
-            <p className="mt-2 text-ink">
+            <p className="mt-2 line-clamp-4 text-ink">
               {entry.kind === 'daily' && entry.row.body}
               {entry.kind === 'compatibility' && entry.row.prose}
               {entry.kind === 'financial' && entry.row.body}

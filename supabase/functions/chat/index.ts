@@ -61,11 +61,9 @@ Deno.serve(async (req) => {
       'or invent it.\n' +
       '- Match the conversational thread above — don\'t repeat a point you already made unless asked to elaborate.'
 
-    const { error: userInsertError } = await admin
-      .from('chat_messages')
-      .insert({ user_id: user.id, role: 'user', content: message })
-    if (userInsertError) throw new Error(`Failed to save user message: ${userInsertError.message}`)
-
+    // Generate BEFORE persisting the user's message. Inserting first meant a failed generation
+    // (e.g. the Gemini daily quota running out) left an orphaned question in the history forever,
+    // with no reply and no way to retry it — the user's chat log filled with dead ends.
     const reply = await generateWithGemini({
       systemInstruction:
         'You are Astra, a Vedic astrologer having a real one-on-one conversation — knowledgeable, direct, and warm ' +
@@ -75,6 +73,11 @@ Deno.serve(async (req) => {
       prompt,
       temperature: 0.9,
     })
+
+    const { error: userInsertError } = await admin
+      .from('chat_messages')
+      .insert({ user_id: user.id, role: 'user', content: message })
+    if (userInsertError) throw new Error(`Failed to save user message: ${userInsertError.message}`)
 
     const { data: assistantRow, error: assistantInsertError } = await admin
       .from('chat_messages')

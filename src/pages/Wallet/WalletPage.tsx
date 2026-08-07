@@ -128,6 +128,11 @@ export default function WalletPage() {
 
       <Card className="mt-4">
         <h2 className="font-display text-lg">Transaction history</h2>
+        {transactions.length === 0 && (
+          <p className="mt-3 text-sm text-ink-faint">
+            No transactions yet — your top-ups and consultation charges will appear here.
+          </p>
+        )}
         <ul className="mt-4 divide-y divide-line">
           {transactions.map((t) => (
             <li key={t.id} className="flex items-center justify-between py-3 text-sm">

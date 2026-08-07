@@ -3,6 +3,7 @@ import { Link } from 'react-router-dom'
 import { motion } from 'framer-motion'
 import { Compass, Heart, Briefcase, Eye, Sparkles, Lock, AlertCircle, Orbit, ThumbsUp, ThumbsDown } from 'lucide-react'
 import { useAuthStore } from '@/store/authStore'
+import { supabase } from '@/lib/supabaseClient'
 import { useNatalChart } from '@/lib/useNatalChart'
 import { callEdgeFunction } from '@/lib/edgeFunctions'
 import { currentDashaLords } from '@/astro-engine'
@@ -73,6 +74,26 @@ export default function DashboardPage() {
   }, [selfBirthProfile])
 
   useEffect(() => loadReading(), [loadReading])
+
+  // Load an already-generated weekly report rather than always showing the "Generate" button —
+  // regenerating costs a Gemini call from a budget shared across every feature and user.
+  useEffect(() => {
+    if (!selfBirthProfile) return
+    let cancelled = false
+    supabase
+      .from('weekly_reports')
+      .select('*')
+      .eq('birth_profile_id', selfBirthProfile.id)
+      .order('week_start', { ascending: false })
+      .limit(1)
+      .maybeSingle()
+      .then(({ data }) => {
+        if (!cancelled && data) setWeeklyReport(data as WeeklyReportRow)
+      })
+    return () => {
+      cancelled = true
+    }
+  }, [selfBirthProfile])
 
   function handleComputeChart() {
     if (!selfBirthProfile) return
@@ -153,18 +174,18 @@ export default function DashboardPage() {
             </motion.p>
           )}
 
-          <div className="mt-6 flex flex-wrap gap-x-6 gap-y-2 text-sm text-ink-muted">
+          <div className="mt-6 flex flex-wrap items-center gap-x-3 gap-y-2 text-sm text-ink-muted">
             {moonRashi && (
-              <>
-                <span>
-                  Moon in {moonRashi.symbol} {moonRashi.name}
-                </span>
-                <span>·</span>
-              </>
+              <span>
+                Moon in {moonRashi.symbol} {moonRashi.name}
+              </span>
             )}
-            <span>
-              {active?.maha} <GlossaryTerm term="mahadasha">Mahadasha</GlossaryTerm>
-            </span>
+            {moonRashi && active?.maha && <span>·</span>}
+            {active?.maha && (
+              <span>
+                {active.maha} <GlossaryTerm term="mahadasha">Mahadasha</GlossaryTerm>
+              </span>
+            )}
             {active?.antar && (
               <>
                 <span>·</span>

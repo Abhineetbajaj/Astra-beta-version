@@ -59,10 +59,17 @@ export default function CompatibilityPage() {
         .single()
       if (insertError || !otherProfile) throw new Error(insertError?.message ?? 'Could not save their profile.')
 
-      const { report: newReport } = await callEdgeFunction<{ report: CompatibilityReportRow }>('compatibility', {
-        otherBirthProfileId: otherProfile.id,
-      })
-      setReport(newReport)
+      try {
+        const { report: newReport } = await callEdgeFunction<{ report: CompatibilityReportRow }>('compatibility', {
+          otherBirthProfileId: otherProfile.id,
+        })
+        setReport(newReport)
+      } catch (reportError) {
+        // The profile row is only useful attached to a report — if generation failed (e.g. the AI
+        // quota ran out), drop it so retrying doesn't pile up duplicate partner profiles.
+        await supabase.from('birth_profiles').delete().eq('id', otherProfile.id)
+        throw reportError
+      }
     } catch (err) {
       setError(err instanceof Error ? err.message : "Couldn't compute compatibility — double check the details.")
     } finally {
