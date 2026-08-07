@@ -55,6 +55,13 @@ export async function generateWithGemini({
 
   if (!res.ok) {
     const body = await res.text()
+    // On the free tier this is a real, expected condition (20 requests/day, shared across every
+    // Gemini-backed feature and every user) — surface something a user can actually read instead
+    // of a raw API error dump. Every function's catch block already does
+    // `errorResponse(err.message, 500)`, so a clean message here is all that's needed.
+    if (res.status === 429) {
+      throw new Error("Astra's AI reading limit has been reached for today — please try again in a little while.")
+    }
     throw new Error(`Gemini API error (${res.status}): ${body}`)
   }
 
