@@ -85,28 +85,44 @@ codebase.
 5. **No silent fallback to mock data.** If `GEMINI_API_KEY`, `RAZORPAY_KEY_ID`/`SECRET`,
    `RAZORPAY_WEBHOOK_SECRET`, or `VITE_SUPABASE_URL`/`VITE_SUPABASE_ANON_KEY` are missing, the
    relevant function/page throws or shows a clear "not configured" screen
-   (`BackendNotConfigured.tsx`) rather than degrading to placeholder content.
-6. RLS is on for every user-data table. Generated content and billing rows are written only by
+   (`BackendNotConfigured.tsx`) rather than degrading to placeholder content. **Fail loud to the
+   developer, not to the user**: an unconfigured-secret path should `console.error` the real
+   env-var name server-side but return a plain-language message the user can act on. Surfacing
+   `Missing required environment variable: RAZORPAY_KEY_ID` straight into the UI (which is what
+   `razorpay-create-order` did until a pre-review audit caught it) is both meaningless to them and
+   leaks internal config.
+6. **Never persist a user's input before the operation that gives it meaning succeeds.** `chat`
+   originally inserted the user's question, then called Gemini — so any generation failure (the
+   free tier's daily quota is easy to hit) left an orphaned question in history forever, unanswered
+   and un-retryable. Generate first, persist after. Same reasoning drives `CompatibilityPage`
+   deleting the partner `birth_profiles` row it just created if report generation fails.
+7. **Assume the AI budget is exhausted and design for it.** The free Gemini tier allows 20
+   requests/day *project-wide* — shared across every feature and every user. Any page whose only
+   content comes from a fresh Gemini call is a dead page whenever that runs out. So: read an
+   existing saved row first (Financial/Wellness/weekly deep-dive all do this now), cache shared
+   content by a deterministic key rather than per user (`daily_readings`, `rashi_horoscopes`,
+   `meditation_tracks.dedupe_key`), and always offer a retry affordance on failure.
+8. RLS is on for every user-data table. Generated content and billing rows are written only by
    edge functions using the service-role client (`_shared/supabaseAdmin.ts`), which bypasses RLS
    by design — the client can only ever *read* its own rows for those tables.
-7. Never commit `.env` or any file with a real secret value. Root `.gitignore` blocks `.env` and
+9. Never commit `.env` or any file with a real secret value. Root `.gitignore` blocks `.env` and
    `.env.*` (except `*.example` files) at every depth, so `supabase/functions/.env` is covered too
    — verified with `git check-ignore`.
-8. **A `birth_profiles` row existing does not guarantee a chart exists for it.** `compute-chart` can
+10. **A `birth_profiles` row existing does not guarantee a chart exists for it.** `compute-chart` can
    fail after the profile is saved (a bad geocode, a transient Gemini/DB error, the tab closing
    mid-request), and `AuthGate` only checks that `selfBirthProfile` exists, not that its chart does
-   — this is deliberate (see point 2 below), not an oversight. Anywhere that reads a chart
+   — this is deliberate, not an oversight. Anywhere that reads a chart
    (`DashboardPage`, `NatalChartPage`, and any future page built the same way) must handle the
    "no chart found" case with a **self-heal "Compute my chart" button** that calls `compute-chart`
    on demand, rather than a dead-end error. `OnboardingPage` also tracks the saved profile id across
    retries so a failed first attempt can be retried without hitting the one-self-profile-per-user
    unique constraint on a duplicate insert.
-9. **Transits (Gochara) are computed fresh on every call, never persisted.** Unlike the natal chart,
-   where the planets are *today* changes daily, so `_shared/transitFacts.ts` /
-   `src/astro-engine/transits.ts` always recompute from the current time — there's no
-   `transits` table. Whatever snapshot fed a given day's `daily_readings`/`chat_messages` row is
-   archived in that row's `facts_used` jsonb, same pattern as every other generated-content table.
-10. **A function with no Supabase session (cron jobs, public email links) needs
+11. **Transits (Gochara) are computed fresh on every call, never persisted.** Unlike the natal chart,
+    where the planets are *today* changes daily, so `_shared/transitFacts.ts` /
+    `src/astro-engine/transits.ts` always recompute from the current time — there's no
+    `transits` table. Whatever snapshot fed a given day's `daily_readings`/`chat_messages` row is
+    archived in that row's `facts_used` jsonb, same pattern as every other generated-content table.
+12. **A function with no Supabase session (cron jobs, public email links) needs
     `verify_jwt = false` in `supabase/config.toml`, not just an internal auth check.** The platform's
     JWT gate runs *before* the function code, so a custom header check (`x-cron-secret`,
     `unsubscribe_token`) alone isn't enough — confirmed the hard way when `send-daily-digest` 401'd
@@ -243,7 +259,15 @@ Everything else is live and verified, not just written.
   this wasn't in the explicit scope of this backend build (only Financial/Medical were named as
   "build if not already present"). The `astrologers`/`consultations`/`consultation_messages`
   tables exist in the schema for whenever this gets built out for real; wallet debits during a
-  simulated consultation now write real rows to `wallet_transactions`.
+  simulated consultation now write real rows to `wallet_transactions`. **`AstrologersPage` now
+  states plainly that this is a preview with simulated replies** — it previously presented canned
+  responses, fake ratings and "online" indicators as a live human service, which is a credibility
+  problem, not just a missing feature. Keep that notice until the flow is genuinely real.
+- **The consultation flow is effectively unreachable end-to-end**: new accounts get no starting
+  credits, and topping up requires Razorpay (unconfigured), so "Start chat" stays disabled. Also
+  `wallet_transactions` has only a `select` RLS policy, so the client-side debit insert in
+  `useWalletBalance.ts` would be rejected even with credits — that write needs to move to an edge
+  function (service role) whenever this flow is built for real.
 - **Yoga detection is intentionally partial** — 6 wealth yogas computable from placement math alone
   (Dhana — any two of the 2nd/5th/9th/11th lords conjunct or exchanged; Lakshmi; Guru-Mangala;
   Kubera; Chandra-Mangal; Gajakesari), not full graha-drishti aspect rules, matching the existing
