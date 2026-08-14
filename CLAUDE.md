@@ -368,13 +368,14 @@ Everything else is live and verified, not just written.
   explicit choice. Revisit whether that's the right default once the Resend domain is verified and
   sends actually reach them — an opt-out-by-default digest is a reasonable retention mechanic, but
   it's a product decision worth confirming, not something to leave silently assumed.
-- **Numerology's migrations and Edge Functions are written but not yet applied/deployed to the
-  live project** (`uejyelsygtgfkufugwvw`) or exercised end-to-end — unlike every other row in the
-  setup checklist above, don't assume this one is live without running `supabase db push` and
-  deploying `numerology-reading`/`numerology-daily-reading`/`numerology-compatibility` first, then
-  verifying RLS and a real Gemini call the same way the rest of this checklist was verified. The
-  CLI in this environment was never logged in (`supabase login`/`SUPABASE_ACCESS_TOKEN` not set),
-  so this deploy has to happen from a machine with real project credentials.
+- **Numerology's migrations and Edge Functions are deployed to the live project**
+  (`uejyelsygtgfkufugwvw`) — `numerology_readings`/`numerology_daily_readings`/
+  `numerology_compatibility_readings` confirmed live with RLS enabled (`select tablename,
+  rowsecurity from pg_tables where tablename like 'numerology%'`), and
+  `numerology-reading`/`numerology-daily-reading`/`numerology-compatibility`/`send-daily-digest`
+  (redeployed for its Personal Day addition) are all deployed. **Not yet exercised against a real
+  Gemini call end-to-end** the way the rest of the setup checklist above was — do that next, same
+  bar as everything else in this table.
 - **Numerology compatibility's "Share" button is text-only** (native share sheet or
   clipboard-copy) — there's no generated shareable image/card. If growth data later shows text
   sharing underperforms, building a real image card is a separate, larger piece of work (needs
