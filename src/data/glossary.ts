@@ -56,6 +56,17 @@ export const GLOSSARY: Record<string, string> = {
   'sade sati': "Saturn's roughly 7.5-year transit through the signs around your natal Moon — a demanding but ultimately maturing period, not a curse.",
   'guru gochar': "Jupiter's current transit relative to your natal Moon — where growth and opportunity are most available to you right now.",
   ascendant: 'Your rising sign — the mask you wear and the lens the rest of your chart gets filtered through.',
+
+  // Numerology
+  'life path number': "Your core number, from your full birth date — the broad theme and lessons of this lifetime, numerology's answer to a Sun sign.",
+  'expression number': 'Also called Destiny — every letter of your full birth name, reduced. What you\'re built to do and express in the world.',
+  'soul urge number': "Also called Heart's Desire — the vowels in your name, reduced. What you actually want underneath the surface.",
+  'personality number': 'The consonants in your name, reduced — the version of you a stranger meets before they know you well.',
+  'birthday number': 'The day of the month you were born, reduced — a specific talent layered onto your Life Path.',
+  'master number': 'Eleven, 22, or 33 — kept un-reduced because they carry an amplified version of 2, 4, or 6, with both more potential and more pressure.',
+  'personal year': "Where you are in your own 1-9 cycle this calendar year — the broad theme for the months ahead, independent of your age.",
+  'personal month': 'A finer-grained slice of your current Personal Year — this month\'s specific flavor of that broader theme.',
+  'personal day': "Today's number in your personal cycle — the most granular, and the one that changes daily.",
 }
 
 export type GlossaryKey = keyof typeof GLOSSARY

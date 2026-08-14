@@ -162,6 +162,40 @@ export interface MedicalReadingRow {
   created_at: string
 }
 
+export interface NumerologyReadingRow {
+  id: string
+  user_id: string
+  birth_profile_id: string
+  system: 'pythagorean' | 'chaldean' | 'vedic'
+  core_numbers: unknown
+  body: string
+  created_at: string
+}
+
+export interface NumerologyDailyReadingRow {
+  id: string
+  user_id: string
+  birth_profile_id: string
+  reading_date: string
+  personal_year: number
+  personal_month: number
+  personal_day: number
+  facts_used: unknown
+  body: string
+  created_at: string
+}
+
+export interface NumerologyCompatibilityReadingRow {
+  id: string
+  user_id: string
+  birth_profile_id: string
+  partner_name: string
+  partner_date_of_birth: string
+  compatibility: unknown
+  body: string
+  created_at: string
+}
+
 export interface RashiHoroscopeRow {
   id: string
   rashi_index: number

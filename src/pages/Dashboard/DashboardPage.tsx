@@ -1,7 +1,7 @@
 import { useCallback, useEffect, useMemo, useState } from 'react'
 import { Link } from 'react-router-dom'
 import { motion } from 'framer-motion'
-import { Compass, Heart, Briefcase, Eye, Sparkles, Lock, AlertCircle, Orbit, ThumbsUp, ThumbsDown } from 'lucide-react'
+import { Compass, Heart, Briefcase, Eye, Sparkles, Lock, AlertCircle, Orbit, ThumbsUp, ThumbsDown, Hash } from 'lucide-react'
 import { useAuthStore } from '@/store/authStore'
 import { supabase } from '@/lib/supabaseClient'
 import { useNatalChart } from '@/lib/useNatalChart'
@@ -9,6 +9,8 @@ import { callEdgeFunction } from '@/lib/edgeFunctions'
 import { currentDashaLords } from '@/astro-engine'
 import { computePanchang } from '@/astro-engine/panchang'
 import { computeTransits } from '@/astro-engine/transits'
+import { computePersonalCycles } from '@/numerology-engine'
+import { meaningForNumber } from '@/data/numerologyMeanings'
 import { RASHIS } from '@/data/rashis'
 import { highlightGlossaryTerms } from '@/lib/highlightGlossaryTerms'
 import GlossaryTerm from '@/components/GlossaryTerm'
@@ -116,6 +118,16 @@ export default function DashboardPage() {
   }
 
   const panchang = useMemo(() => computePanchang(new Date()), [])
+
+  // Deterministic, client-side only — no Gemini call from Dashboard. The AI-narrated Personal Day
+  // blurb only loads once the user clicks through to /numerology; Dashboard already fires
+  // daily-reading (and conditionally weekly-report), and the shared 20-req/day Gemini budget
+  // shouldn't take a third hit just for a teaser card.
+  const personalDay = useMemo(() => {
+    if (!selfBirthProfile) return null
+    return computePersonalCycles(selfBirthProfile.date_of_birth, new Date()).personalDay
+  }, [selfBirthProfile])
+  const personalDayMeaning = personalDay ? meaningForNumber(personalDay.value) : null
 
   const transits = useMemo(() => {
     if (!chart) return null
@@ -225,6 +237,24 @@ export default function DashboardPage() {
           </div>
         ))}
       </div>
+
+      {personalDay && personalDayMeaning && (
+        <Link to="/numerology" className="block">
+          <Card className="transition-colors hover:border-line-strong">
+            <div className="flex items-center justify-between">
+              <div className="flex items-center gap-2 text-ink-muted">
+                <Hash className="size-4" strokeWidth={1.75} />
+                <span className="text-xs font-medium uppercase tracking-wide">Personal Day</span>
+              </div>
+              <span className="nums-tabular text-lg text-ink">{personalDay.value}</span>
+            </div>
+            <p className="mt-2 text-sm text-ink-muted">
+              {personalDayMeaning.title} — {personalDayMeaning.positiveTraits[0]?.toLowerCase()}. See your full
+              numerology reading →
+            </p>
+          </Card>
+        </Link>
+      )}
 
       {transits && (
         <Card>

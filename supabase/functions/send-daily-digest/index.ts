@@ -10,6 +10,8 @@
 import { corsHeaders, errorResponse, jsonResponse } from '../_shared/cors.ts'
 import { supabaseAdmin } from '../_shared/supabaseAdmin.ts'
 import { generateDailyReading } from '../_shared/generateDailyReading.ts'
+import { computePersonalCycles } from '../_shared/numerology-engine/index.ts'
+import { meaningForNumber } from '../_shared/data/numerologyMeanings.ts'
 
 function requireEnv(name: string): string {
   const value = Deno.env.get(name)
@@ -26,6 +28,7 @@ function digestHtml(opts: {
   watch: string
   siteUrl: string
   unsubscribeUrl: string
+  numerology: { personalDay: number; title: string; blurb: string } | null
 }): string {
   const card = (label: string, text: string) =>
     `<tr><td style="padding:10px 0;border-top:1px solid #e5e0d8;">` +
@@ -42,9 +45,11 @@ function digestHtml(opts: {
       ${card('Love', opts.love)}
       ${card('Career', opts.career)}
       ${card('Watch for', opts.watch)}
+      ${opts.numerology ? card(`Numerology · Personal Day ${opts.numerology.personalDay}`, `${opts.numerology.title} — ${opts.numerology.blurb}`) : ''}
     </table>
     <p style="margin-top:24px;">
       <a href="${opts.siteUrl}/dashboard" style="color:#9c6b3e;">View your full dashboard →</a>
+      ${opts.numerology ? ` &nbsp;·&nbsp; <a href="${opts.siteUrl}/numerology" style="color:#9c6b3e;">See your numerology →</a>` : ''}
     </p>
     <p style="margin-top:32px;font-size:11px;color:#a8a296;">
       You're receiving this because email updates are on for your Astra account.
@@ -88,7 +93,7 @@ Deno.serve(async (req) => {
       try {
         const { data: selfProfile } = await admin
           .from('birth_profiles')
-          .select('id')
+          .select('id, date_of_birth')
           .eq('user_id', profile.id)
           .eq('relation', 'self')
           .maybeSingle()
@@ -104,6 +109,24 @@ Deno.serve(async (req) => {
           month: 'long',
         })
 
+        // Deterministic only — deliberately does NOT call generateNumerologyDailyReading here.
+        // That would be a second Gemini call per user in this cron batch, doubling load against
+        // the shared 20-req/day quota (see CLAUDE.md). The full AI-narrated Personal Day blurb
+        // still loads on-demand when the user opens /numerology themselves.
+        let numerology: { personalDay: number; title: string; blurb: string } | null = null
+        try {
+          const cycles = computePersonalCycles(selfProfile.date_of_birth, new Date())
+          const meaning = meaningForNumber(cycles.personalDay.value)
+          numerology = {
+            personalDay: cycles.personalDay.value,
+            title: meaning.title,
+            blurb: meaning.positiveTraits[0] ?? meaning.lifeLesson,
+          }
+        } catch (numerologyErr) {
+          // Never let a numerology formatting issue block the astrology email that already works.
+          console.error(`send-daily-digest numerology card failed for profile ${profile.id}:`, numerologyErr)
+        }
+
         await sendEmail(
           resendApiKey,
           profile.email,
@@ -117,6 +140,7 @@ Deno.serve(async (req) => {
             watch: reading.watch_card,
             siteUrl,
             unsubscribeUrl: `${supabaseUrl}/functions/v1/unsubscribe-digest?token=${profile.unsubscribe_token}`,
+            numerology,
           }),
         )
         sent++

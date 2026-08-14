@@ -11,7 +11,8 @@ birth, and place of birth, it computes their real birth chart and generates pers
 natural-language content from that chart: a daily reading, a full chart breakdown, compatibility
 between two people, freeform Q&A with an AI astrologer ("Ask Astra"), and Premium-gated financial
 and medical astrology readings. A marketplace of human astrologers, backed by a wallet, is also
-present.
+present. A free Numerology section (Pythagorean core numbers + a daily Personal Day reading) sits
+alongside the astrology features as a second, independent daily-habit surface — see below.
 
 **Non-negotiable architecture rule:** astrology facts (planetary positions, houses, nakshatras,
 dasha periods, yogas) are always computed deterministically — never invented or "calculated" by an
@@ -129,6 +130,69 @@ codebase.
     at the gateway (`UNAUTHORIZED_NO_AUTH_HEADER`) before its own secret check ever ran. See
     `[functions.send-daily-digest]`/`[functions.unsubscribe-digest]` in `config.toml`.
 
+## Numerology
+
+A free, independent daily-habit section alongside the astrology features — Pythagorean core
+numbers (Life Path, Expression, Soul Urge, Personality, Birthday) plus a daily Personal
+Year/Month/Day cycle, the retention hook. Deliberately **not Premium-gated** in MVP: it's a
+brand-new feature and gating it before it can build a daily-open habit would defeat the point.
+Chaldean (name-vibration + compound numbers) and Vedic (Mulank/Bhagyank/Lo Shu) are scaffolded in
+the engine's type system (`NumerologySystem`) but not implemented — every number is tagged with
+the system that produced it so those can ship later without a breaking change, and so the app
+never silently mixes systems that disagree on letter values.
+
+- **All core numbers and personal cycles are closed-form arithmetic — no ephemeris, no external
+  dependency, never persisted.** Same architectural category as `panchang.ts`/`transits.ts`
+  (compute it, don't source it): `src/numerology-engine/` renders the core-numbers table and the
+  Personal Day number **instantly, client-side, for free**, same UX as the Dashboard's Panchang
+  strip. Only two things cost Gemini budget and get a DB table + Edge Function: a one-time AI
+  synthesis of the 5 core numbers (`numerology_readings`, `numerology-reading`) and the daily
+  Personal Day AI blurb (`numerology_daily_readings`, `numerology-daily-reading`, idempotent per
+  `(birth_profile, date)` exactly like `daily_readings`).
+- `src/numerology-engine/reduction.ts`'s `reduceToSingleDigitOrMaster()` is the one shared
+  master-number-preserving reduction rule — every calculator (core numbers AND personal cycles)
+  routes through it rather than reimplementing digit-summing per-number.
+- **Known simplification, disclosed rather than silent:** `birth_profiles.name` is a single field
+  (no separate "full birth-certificate name" vs. "name currently goes by"), so name-based numbers
+  (Expression/Soul Urge/Personality) run on whatever name is in that field — mathematically valid,
+  just reduced-fidelity if it's not the complete birth name. The Numerology page has an inline
+  "edit name" affordance; onboarding's name field is labeled "Full name (as on birth certificate)"
+  to raise data quality at the source. No new column was added for this — same category of
+  disclosed simplification as `guna.ts` covering 3-of-8 kutas rather than all 8.
+- **Known simplification:** the Y vowel/consonant rule (`nameNumbers.ts`'s `isVowel()`) uses a
+  documented heuristic — Y counts as a vowel only when it isn't immediately adjacent to another
+  vowel letter — approximating "Y supplies the vowel sound in this syllable" without a real
+  syllable parser. Correctly classifies the standard reference examples (Bryn, Kylie, Gypsy) but
+  is a heuristic, not true syllable analysis.
+- Duplicated into `supabase/functions/_shared/numerology-engine/` and
+  `_shared/data/numerologyMeanings.ts` for Deno, same "keep in sync" convention as the astro-engine.
+- Dashboard's Personal Day teaser card is deterministic-only — it does not call
+  `numerology-daily-reading`; that Gemini call only fires when the user opens `/numerology`
+  itself, so a third page doesn't add to Dashboard's existing `daily-reading` +
+  conditional-`weekly-report` Gemini load (rule 7).
+- **Compatibility** (`numerology-compatibility`, `numerology_compatibility_readings`): Life
+  Path/Expression/Soul Urge matching between the user and a named partner — 3 numbers, an
+  honestly-scoped subset, same convention as `guna.ts` covering 3 of 8 classical kutas. The
+  partner is **not** stored as a `birth_profiles` row — that table's `place_name`/`lat`/`lon`/
+  `utc_offset_minutes` columns are `NOT NULL` (astrology needs them; numerology doesn't), so
+  partner name + date of birth are stored directly on the result row instead. The score itself
+  (`src/numerology-engine/compatibility.ts`) is instant, client-side, free; only the narrated
+  prose costs a Gemini call, fired by an explicit "Get the full reading" button, not automatically.
+  The "Share" button builds a plain-text summary and uses `navigator.share()` (clipboard-copy
+  fallback) — **no image-card generation**; that would need real server-side image rendering,
+  not built here. Flag to the user if a designed shareable image (not just text) turns out to
+  matter for growth — it's a bigger lift, deliberately deferred.
+- **Daily digest email** (`send-daily-digest`) now includes a Personal Day line. Deliberately
+  **deterministic only** — it does NOT call `generateNumerologyDailyReading`/Gemini a second time
+  per user in the cron batch, which would double the Gemini load per digest run against the
+  already-tight shared 20-req/day quota (see the Gemini quota row in the setup checklist below).
+  The full AI-narrated Personal Day blurb still only generates when the user opens `/numerology`
+  themselves. **True push notifications (browser/mobile) are not built** — there's no service
+  worker, VAPID keys, or push-subscription table anywhere in this app; "notification" currently
+  means this email digest only, which itself is still Resend-sandboxed to one recipient (see the
+  existing digest gap below). Building real push would be new infrastructure, not an extension of
+  what exists — treat as a separate, larger feature if it's wanted.
+
 ## Key files & folders
 
 ```
@@ -143,7 +207,12 @@ src/
                          Gregorian-month heuristic, not true masa/lunar-month math — see Known gaps)
                          over a date range — no external calendar API, same "compute it, don't
                          source it externally" philosophy as the rest of the engine
-  data/                 static reference data (rashis, nakshatras, dasha sequence, astrologer personas)
+  numerology-engine/     pure TS numerology engine — reduction (master-number-preserving),
+                         letterValues, nameNumbers (Expression/Soul Urge/Personality), coreNumbers
+                         (Life Path/Birthday), personalCycles (Personal Year/Month/Day). chaldean.ts/
+                         vedic.ts are Phase-2 scaffolding, not wired into computeCoreNumbers yet.
+  data/                 static reference data (rashis, nakshatras, dasha sequence, astrologer
+                         personas, numerologyMeanings — 1-9/11/22/33 trait library)
   lib/
     supabaseClient.ts    Supabase client + isBackendConfigured guard
     edgeFunctions.ts     callEdgeFunction() — invokes an edge fn with the session's bearer token
@@ -159,7 +228,8 @@ src/
     authStore.ts          session + profile + selfBirthProfile + isPremium, synced via onAuthStateChange
     themeStore.ts          unchanged
   pages/                 one folder per route — Dashboard, NatalChart, Compatibility, Chat,
-                         Financial, Medical, Wallet, Pricing, Astrologers, History, Profile, Onboarding, Auth
+                         Financial, Medical, Wallet, Pricing, Astrologers, History, Profile,
+                         Onboarding, Auth, Numerology (free, not Premium-gated)
   components/layout/
     AuthGate.tsx          redirect to /auth or /onboarding based on session + selfBirthProfile
     PremiumGate.tsx        route guard for Financial/Medical — shows upsell if not Premium
@@ -176,6 +246,10 @@ supabase/
   functions/
     _shared/
       astro-engine/, data/        Deno copies of the frontend engine (see "keep in sync" note above)
+      numerology-engine/         Deno copy of src/numerology-engine/ (see "keep in sync" note above)
+      generateNumerologyDailyReading.ts   get-or-generate today's Personal Day reading, shared
+                                  logic used by numerology-daily-reading, same idempotent-per-day
+                                  shape as generateDailyReading.ts
       computeAndPersistChart.ts   compute + persist a chart for a birth_profile or company_profile
       loadChartFacts.ts           read a persisted chart back out as compact LLM-ready JSON
       transitFacts.ts             loads a chart's natal ascendant/Moon and computes today's Gochara
@@ -196,6 +270,9 @@ supabase/
     compatibility/         real guna score (3 of 8 kutas) + Gemini prose
     financial-reading/     Premium — wealth yogas, 2nd/11th strength, dasha favorability, disclaimer
     medical-reading/       Premium — 6th/8th/12th house, soft language only, disclaimer
+    numerology-reading/    Free — one-time/regenerate-able AI synthesis of the 5 core numbers
+    numerology-daily-reading/   Free — Personal Day reading, idempotent per (profile, date)
+    numerology-compatibility/   Free — Life Path/Expression/Soul Urge match vs. a named partner
     send-daily-digest/     pg_cron-triggered (see below) — emails opted-in users their reading via
                             Resend; verify_jwt=false, authenticates via x-cron-secret header instead
     unsubscribe-digest/    public link clicked from the email; verify_jwt=false, authenticates via
@@ -291,6 +368,20 @@ Everything else is live and verified, not just written.
   explicit choice. Revisit whether that's the right default once the Resend domain is verified and
   sends actually reach them — an opt-out-by-default digest is a reasonable retention mechanic, but
   it's a product decision worth confirming, not something to leave silently assumed.
+- **Numerology's migrations and Edge Functions are written but not yet applied/deployed to the
+  live project** (`uejyelsygtgfkufugwvw`) or exercised end-to-end — unlike every other row in the
+  setup checklist above, don't assume this one is live without running `supabase db push` and
+  deploying `numerology-reading`/`numerology-daily-reading`/`numerology-compatibility` first, then
+  verifying RLS and a real Gemini call the same way the rest of this checklist was verified. The
+  CLI in this environment was never logged in (`supabase login`/`SUPABASE_ACCESS_TOKEN` not set),
+  so this deploy has to happen from a machine with real project credentials.
+- **Numerology compatibility's "Share" button is text-only** (native share sheet or
+  clipboard-copy) — there's no generated shareable image/card. If growth data later shows text
+  sharing underperforms, building a real image card is a separate, larger piece of work (needs
+  server-side rendering), not a quick follow-up.
+- **No real push notifications exist anywhere in this app** — "notification" today means the
+  Resend-sandboxed daily digest email only. Building actual browser/mobile push (service worker,
+  VAPID keys, a subscription table, permission UX) is new infrastructure, scoped out of this pass.
 - **Two stale test accounts remain in the live `profiles` table**: `astra.debugtest.7734@gmail.com`
   and `astra.debugtest.9921@gmail.com` (from earlier ad-hoc testing). Left in place deliberately —
   flagged, not deleted, since ownership/purpose wasn't confirmed.

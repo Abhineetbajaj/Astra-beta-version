@@ -15,6 +15,7 @@ import FinancialPage from '@/pages/Financial/FinancialPage'
 import MedicalPage from '@/pages/Medical/MedicalPage'
 import HoroscopePage from '@/pages/Horoscope/HoroscopePage'
 import ListenPage from '@/pages/Listen/ListenPage'
+import NumerologyPage from '@/pages/Numerology/NumerologyPage'
 import AstrologersPage from '@/pages/Astrologers/AstrologersPage'
 import AstrologerDetailPage from '@/pages/Astrologers/AstrologerDetailPage'
 import ConsultationPage from '@/pages/Astrologers/ConsultationPage'
@@ -41,6 +42,7 @@ export default function AppRouter() {
           <Route path="/chat" element={<ChatPage />} />
           <Route path="/horoscope" element={<HoroscopePage />} />
           <Route path="/listen" element={<ListenPage />} />
+          <Route path="/numerology" element={<NumerologyPage />} />
           <Route element={<PremiumGate />}>
             <Route path="/financial" element={<FinancialPage />} />
             <Route path="/medical" element={<MedicalPage />} />

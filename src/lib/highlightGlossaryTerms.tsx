@@ -21,6 +21,17 @@ const PHRASE_TERMS: { phrase: string; key: string }[] = [
   { phrase: 'exalted', key: 'exalted' },
   { phrase: 'debilitated', key: 'debilitated' },
   { phrase: 'Ascendant', key: 'ascendant' },
+  { phrase: 'Life Path number', key: 'life path number' },
+  { phrase: 'Life Path', key: 'life path number' },
+  { phrase: 'Expression number', key: 'expression number' },
+  { phrase: 'Soul Urge number', key: 'soul urge number' },
+  { phrase: 'Soul Urge', key: 'soul urge number' },
+  { phrase: 'Personality number', key: 'personality number' },
+  { phrase: 'Birthday number', key: 'birthday number' },
+  { phrase: 'Master number', key: 'master number' },
+  { phrase: 'Personal Year', key: 'personal year' },
+  { phrase: 'Personal Month', key: 'personal month' },
+  { phrase: 'Personal Day', key: 'personal day' },
 ]
 
 // Longest phrase first so a multi-word phrase always wins over a shorter overlapping alternative.

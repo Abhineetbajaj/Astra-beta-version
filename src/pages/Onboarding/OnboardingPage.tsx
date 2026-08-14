@@ -105,10 +105,13 @@ export default function OnboardingPage() {
             <h2 className="font-display text-lg">Your name</h2>
             <Input
               className="mt-3"
-              placeholder="First name"
+              placeholder="Full name (as on birth certificate)"
               value={name}
               onChange={(e) => setName(e.target.value)}
             />
+            <p className="mt-2 text-xs text-ink-faint">
+              Your full name also powers Numerology's name-based numbers — you can edit it any time.
+            </p>
           </Card>
 
           <Card>

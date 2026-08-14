@@ -127,6 +127,23 @@ export const CLASSICAL_VOICE_DIRECTIVE =
  * reading. Named facts set the frame at the start; the rest of the script doesn't need to keep
  * citing them.
  */
+/**
+ * Voice directive for numerology content (`numerology-reading`, `numerology-daily-reading`).
+ * Distinct from CLASSICAL_VOICE_DIRECTIVE because numerology has its own grounding rule: every
+ * number must be named alongside the system that produced it (Pythagorean, Chaldean, or Vedic —
+ * they disagree on values, so a bare "7" is meaningless once more than one system exists), never
+ * a bare digit alone.
+ */
+export const NUMEROLOGY_VOICE_DIRECTIVE =
+  'Always name both the specific number AND the system that produced it — e.g. "your Pythagorean ' +
+  'Life Path 7," never a bare "7" on its own. Never invent, recompute, or contradict a number — ' +
+  'only the precomputed facts in the FACTS block are real. Every shadow trait or challenge must be ' +
+  'framed as a growth edge or invitation, never as a fixed flaw, a fatalistic prediction, or ' +
+  'destiny you cannot change. Be specific and grounded — cite the actual computed number in most ' +
+  'sentences, the way a real numerologist would, not generic "vibes" or horoscope-column language. ' +
+  'Never make a deterministic health, financial, or legal claim, and never phrase anything as a ' +
+  'guaranteed outcome.'
+
 export const MEDITATIVE_VOICE_DIRECTIVE =
   'Write a short guided reflection, not a chart reading. Ground it in the one or two real facts given ' +
   '— name them once, early, to set the frame (e.g. "In this Saturn Mahadasha..." or "As Jupiter moves ' +
