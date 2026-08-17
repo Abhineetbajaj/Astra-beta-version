@@ -1,6 +1,6 @@
 // Deno copy of src/numerology-engine/nameNumbers.ts — keep in sync; do not diverge silently.
 
-import { PYTHAGOREAN_LETTER_VALUES } from './letterValues.ts'
+import { CHALDEAN_LETTER_VALUES, PYTHAGOREAN_LETTER_VALUES } from './letterValues.ts'
 import { isMasterNumber, reduceToSingleDigitOrMaster } from './reduction.ts'
 import type { NumberResult, NumerologySystem } from './types.ts'
 
@@ -20,10 +20,11 @@ function isVowel(letters: string, index: number): boolean {
   return !adjacentVowel
 }
 
+// Vedic Namank uses Chaldean-style letter values — see src/numerology-engine/nameNumbers.ts for the full comment.
 function valueFor(letter: string, system: NumerologySystem): number {
-  if (system !== 'pythagorean') throw new Error(`Numerology system '${system}' is not yet supported.`)
-  const value = PYTHAGOREAN_LETTER_VALUES[letter]
-  if (value === undefined) throw new Error(`No Pythagorean value for letter '${letter}'`)
+  const table = system === 'pythagorean' ? PYTHAGOREAN_LETTER_VALUES : CHALDEAN_LETTER_VALUES
+  const value = table[letter]
+  if (value === undefined) throw new Error(`No letter value for '${letter}' under system '${system}'`)
   return value
 }
 

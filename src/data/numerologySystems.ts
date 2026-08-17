@@ -18,13 +18,13 @@ export const NUMEROLOGY_SYSTEMS: NumerologySystemInfo[] = [
   {
     id: 'chaldean',
     label: 'Chaldean',
-    available: false,
-    blurb: 'Coming soon — name-vibration numerology and compound numbers 10-52.',
+    available: true,
+    blurb: 'Name-vibration numerology and compound numbers 10-52.',
   },
   {
     id: 'vedic',
     label: 'Vedic',
-    available: false,
-    blurb: 'Coming soon — Mulank, Bhagyank, and the Lo Shu grid, tied to the Navagraha.',
+    available: true,
+    blurb: 'Mulank, Bhagyank, and the Lo Shu grid, tied to the Navagraha.',
   },
 ]

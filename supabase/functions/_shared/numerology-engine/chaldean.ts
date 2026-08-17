@@ -1,13 +1,8 @@
-// Chaldean's distinctive layer beyond a root number: the compound (double-digit, 10-52) total of
-// a name is never discarded — both the compound and its reduced root get read. Per Cheiro's
-// canon (The Book of Numbers, 1926/1935), compound meanings are codified 10-52 only; totals above
-// 52 are summed down, and digit-reversal shortcuts (treating 12 as equivalent to 21) are
-// incorrect — each compound has its own distinct meaning. Compound meanings below are seed copy —
-// condensed in spirit from classical Chaldean/Cheiro sources, not verbatim authoritative text —
-// same caveat as numerologyMeanings.ts.
-import { CHALDEAN_LETTER_VALUES } from './letterValues'
-import { isMasterNumber, reduceToSingleDigitOrMaster } from './reduction'
-import type { NumberResult } from './types'
+// Deno copy of src/numerology-engine/chaldean.ts — keep in sync; do not diverge silently.
+
+import { CHALDEAN_LETTER_VALUES } from './letterValues.ts'
+import { isMasterNumber, reduceToSingleDigitOrMaster } from './reduction.ts'
+import type { NumberResult } from './types.ts'
 
 export interface CompoundNumberMeaning {
   compound: number
@@ -85,12 +80,10 @@ function sumDownTo52(n: number): number {
 }
 
 export interface ChaldeanExpression {
-  /** The compound total, summed down to the 10-52 range Cheiro's canon covers (never digit-reversed). */
   compound: number
   root: NumberResult
 }
 
-/** Chaldean's Expression number, carrying both its compound (10-52) total and reduced root. */
 export function chaldeanCompoundExpressionNumber(fullName: string): ChaldeanExpression {
   const compound = sumDownTo52(chaldeanCompoundTotal(fullName))
   const rootValue = reduceToSingleDigitOrMaster(compound)

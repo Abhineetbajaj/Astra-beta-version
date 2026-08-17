@@ -1,29 +1,20 @@
-// Vedic/Indian numerology ties Mulank (birth-day reduced — the "psychic"/driver number) and
-// Bhagyank (full date-of-birth reduced — the "destiny"/conductor number, equivalent to a
-// Pythagorean-style Life Path) to the Navagraha (nine planets), and reads a Lo Shu grid built
-// from the digit-frequency of the birth date across a fixed 3x3 layout.
-import { CHALDEAN_LETTER_VALUES } from './letterValues'
-import { isMasterNumber, reduceToSingleDigitOrMaster } from './reduction'
-import type { NumberResult } from './types'
+// Deno copy of src/numerology-engine/vedic.ts — keep in sync; do not diverge silently.
 
-/** Mulank (Moolank) — the day of birth alone, reduced. Also called the Psychic/Driver number. */
+import { CHALDEAN_LETTER_VALUES } from './letterValues.ts'
+import { isMasterNumber, reduceToSingleDigitOrMaster } from './reduction.ts'
+import type { NumberResult } from './types.ts'
+
 export function mulankNumber(dateOfBirth: string): number {
   const day = Number(dateOfBirth.split('-')[2])
   return reduceToSingleDigitOrMaster(day)
 }
 
-/** Bhagyank — the full birth date reduced. Also called the Destiny/Conductor number. */
 export function bhagyankNumber(dateOfBirth: string): number {
   const digits = dateOfBirth.replace(/-/g, '')
   const total = digits.split('').reduce((sum, d) => sum + Number(d), 0)
   return reduceToSingleDigitOrMaster(total)
 }
 
-/**
- * Namank — the name number, using Chaldean-style letter values (per the research this engine is
- * built from: Vedic numerology "uses Chaldean letter values for names but a birth-date-based
- * Mulank and Bhagyank"). Vowel/consonant splitting doesn't apply here — Namank sums every letter.
- */
 export function namankNumber(fullName: string): NumberResult {
   const letters = fullName.toUpperCase().replace(/[^A-Z]/g, '')
   let total = 0
@@ -34,7 +25,6 @@ export function namankNumber(fullName: string): NumberResult {
   return { value, isMaster: isMasterNumber(value), system: 'vedic' }
 }
 
-/** Digit-frequency grid from the birth date, positioned per the fixed Lo Shu 3x3 layout (1-9). */
 export function loShuGrid(dateOfBirth: string): Record<number, number> {
   const digits = dateOfBirth.replace(/-/g, '').split('').map(Number)
   const grid: Record<number, number> = { 1: 0, 2: 0, 3: 0, 4: 0, 5: 0, 6: 0, 7: 0, 8: 0, 9: 0 }
@@ -44,11 +34,6 @@ export function loShuGrid(dateOfBirth: string): Record<number, number> {
   return grid
 }
 
-/**
- * Which numbers are entirely absent from the Lo Shu grid — classically read as a growth edge
- * rather than a flaw. Intentionally scoped to "which numbers are missing," not a full classical
- * remedial reading (gemstones, remedies) — same honesty convention as the rest of this engine.
- */
 export function missingNumbers(grid: Record<number, number>): number[] {
   return Object.entries(grid)
     .filter(([, count]) => count === 0)

@@ -132,14 +132,38 @@ codebase.
 
 ## Numerology
 
-A free, independent daily-habit section alongside the astrology features — Pythagorean core
-numbers (Life Path, Expression, Soul Urge, Personality, Birthday) plus a daily Personal
-Year/Month/Day cycle, the retention hook. Deliberately **not Premium-gated** in MVP: it's a
-brand-new feature and gating it before it can build a daily-open habit would defeat the point.
-Chaldean (name-vibration + compound numbers) and Vedic (Mulank/Bhagyank/Lo Shu) are scaffolded in
-the engine's type system (`NumerologySystem`) but not implemented — every number is tagged with
-the system that produced it so those can ship later without a breaking change, and so the app
-never silently mixes systems that disagree on letter values.
+A free, independent daily-habit section alongside the astrology features — core numbers (Life
+Path, Expression, Soul Urge, Personality, Birthday) plus a daily Personal Year/Month/Day cycle,
+the retention hook. Deliberately **not Premium-gated**: it's a habit-building feature and gating
+it before it can build a daily-open habit would defeat the point (Phase 2 gating was explicitly
+deferred by the user — revisit once there's real usage to inform the decision, don't gate
+preemptively). **All three systems now ship**: Pythagorean (the default), Chaldean (name-vibration
++ compound numbers 10-52), and Vedic (Mulank/Bhagyank/Namank/Lo Shu grid) — a segmented picker on
+`/numerology` switches between them, recomputing client-side instantly (no network call). Every
+number is tagged with the system that produced it (`NumerologySystem` on every `NumberResult`) so
+the app never silently mixes systems that disagree on letter values.
+- **Chaldean**: `src/numerology-engine/chaldean.ts` — `CHALDEAN_LETTER_VALUES` (sound-based, 1-8,
+  9 never assigned) feeds the same `expressionNumber`/`soulUrgeNumber`/`personalityNumber` used by
+  Pythagorean (`nameNumbers.ts`'s `valueFor()` branches on system). `chaldeanCompoundExpressionNumber()`
+  additionally tracks the compound (10-52) total per Cheiro's canon — summed down (not
+  digit-reversed) if the raw total exceeds 52 — with seed content for all 43 compounds in
+  `CHALDEAN_COMPOUND_MEANINGS`.
+- **Vedic**: `src/numerology-engine/vedic.ts` — Mulank (day-of-birth reduced) and Bhagyank
+  (whole-date summed in one pass, not the Pythagorean per-component method — a documented,
+  intentional difference) each tagged with a planetary ruler (`src/data/numerologyPlanets.ts`,
+  the Navagraha 1-9 table). Namank (name number) reuses Chaldean's letter values, per the
+  research this engine is built from. The Lo Shu grid (`loShuGrid()`) is a fixed 3x3 digit-frequency
+  layout (`LoShuGridDisplay.tsx`); `missingNumbers()` + `noteForMissingNumber()` read absent
+  numbers as growth edges, not deficiencies — intentionally scoped to "what's missing," not a full
+  classical remedial reading (gemstones, remedies).
+- Vedic/Chaldean core-number *trait content* (Strengths/Growth edge/Life lesson cards) reuses the
+  existing `NUMEROLOGY_MEANINGS` 1-9/11/22/33 library rather than duplicating it — that content
+  isn't system-specific in the original research, only the planetary framing and Lo Shu grid are
+  genuinely Vedic-only additions.
+- The daily Personal Day habit loop (`numerology-daily-reading`, Dashboard teaser) stays
+  **Pythagorean-only by design** — the system picker only affects the core-numbers table and the
+  "explained" AI reading on `/numerology`, not the daily card, matching the DB migration's original
+  `numerology_daily_readings` scoping decision.
 
 - **All core numbers and personal cycles are closed-form arithmetic — no ephemeris, no external
   dependency, never persisted.** Same architectural category as `panchang.ts`/`transits.ts`
@@ -178,10 +202,18 @@ never silently mixes systems that disagree on letter values.
   partner name + date of birth are stored directly on the result row instead. The score itself
   (`src/numerology-engine/compatibility.ts`) is instant, client-side, free; only the narrated
   prose costs a Gemini call, fired by an explicit "Get the full reading" button, not automatically.
-  The "Share" button builds a plain-text summary and uses `navigator.share()` (clipboard-copy
-  fallback) — **no image-card generation**; that would need real server-side image rendering,
-  not built here. Flag to the user if a designed shareable image (not just text) turns out to
-  matter for growth — it's a bigger lift, deliberately deferred.
+  Compatibility scoring itself stays Pythagorean-only for now (system picker doesn't extend here yet).
+- **Shareable result cards** (`src/components/share/ShareCard.tsx`, `src/lib/shareCardImage.ts`):
+  the compatibility "Share" button and both Personal Day teasers (Dashboard + `/numerology`) now
+  generate a real designed PNG card client-side via `html-to-image` (rendered off-screen at
+  540x960, captured at `pixelRatio: 2` → 1080x1920, Instagram-Story-ready), shared through
+  `navigator.share({ files })` on mobile (posts straight into Stories/WhatsApp) with a download
+  fallback on desktop. Cards use the theme-invariant `fixed-dark` tokens (same ones `AuthPage`'s
+  hero panel uses) so they look the same regardless of the viewer's device theme. Compatibility
+  verdict headlines (`src/data/compatibilityVerdicts.ts`) are score-band copy, not AI-generated —
+  keeps the share flow instant and free. **Not yet built**: a square (1080x1080) feed-post variant
+  — only the Story-ratio card shipped; add if there's a real reason to (e.g. feed-share data
+  showing people want it).
 - **Daily digest email** (`send-daily-digest`) now includes a Personal Day line. Deliberately
   **deterministic only** — it does NOT call `generateNumerologyDailyReading`/Gemini a second time
   per user in the cron batch, which would double the Gemini load per digest run against the
@@ -208,11 +240,15 @@ src/
                          over a date range — no external calendar API, same "compute it, don't
                          source it externally" philosophy as the rest of the engine
   numerology-engine/     pure TS numerology engine — reduction (master-number-preserving),
-                         letterValues, nameNumbers (Expression/Soul Urge/Personality), coreNumbers
-                         (Life Path/Birthday), personalCycles (Personal Year/Month/Day). chaldean.ts/
-                         vedic.ts are Phase-2 scaffolding, not wired into computeCoreNumbers yet.
+                         letterValues, nameNumbers (Expression/Soul Urge/Personality, all 3
+                         systems), coreNumbers (Life Path/Birthday), personalCycles (Personal
+                         Year/Month/Day), compatibility (Life Path/Expression/Soul Urge matching),
+                         chaldean (compound 10-52), vedic (Mulank/Bhagyank/Namank/Lo Shu)
+  components/share/      ShareCard.tsx — the compatibility + Personal Day shareable PNG cards
+  components/numerology/ LoShuGridDisplay.tsx — the Vedic 3x3 digit-frequency grid
   data/                 static reference data (rashis, nakshatras, dasha sequence, astrologer
-                         personas, numerologyMeanings — 1-9/11/22/33 trait library)
+                         personas, numerologyMeanings — 1-9/11/22/33 trait library, numerologyPlanets
+                         — Navagraha rulerships, compatibilityVerdicts — share-card headline copy)
   lib/
     supabaseClient.ts    Supabase client + isBackendConfigured guard
     edgeFunctions.ts     callEdgeFunction() — invokes an edge fn with the session's bearer token

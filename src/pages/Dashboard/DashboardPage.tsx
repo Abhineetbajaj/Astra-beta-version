@@ -1,7 +1,7 @@
-import { useCallback, useEffect, useMemo, useState } from 'react'
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import { Link } from 'react-router-dom'
 import { motion } from 'framer-motion'
-import { Compass, Heart, Briefcase, Eye, Sparkles, Lock, AlertCircle, Orbit, ThumbsUp, ThumbsDown, Hash } from 'lucide-react'
+import { Compass, Heart, Briefcase, Eye, Sparkles, Lock, AlertCircle, Orbit, ThumbsUp, ThumbsDown, Hash, Share2 } from 'lucide-react'
 import { useAuthStore } from '@/store/authStore'
 import { supabase } from '@/lib/supabaseClient'
 import { useNatalChart } from '@/lib/useNatalChart'
@@ -14,6 +14,8 @@ import { meaningForNumber } from '@/data/numerologyMeanings'
 import { RASHIS } from '@/data/rashis'
 import { highlightGlossaryTerms } from '@/lib/highlightGlossaryTerms'
 import GlossaryTerm from '@/components/GlossaryTerm'
+import ShareCard from '@/components/share/ShareCard'
+import { shareCardImage } from '@/lib/shareCardImage'
 import { Card } from '@/components/ui/Card'
 import { Skeleton } from '@/components/ui/Skeleton'
 import { Button } from '@/components/ui/Button'
@@ -128,6 +130,22 @@ export default function DashboardPage() {
     return computePersonalCycles(selfBirthProfile.date_of_birth, new Date()).personalDay
   }, [selfBirthProfile])
   const personalDayMeaning = personalDay ? meaningForNumber(personalDay.value) : null
+
+  const [dailyCardStatus, setDailyCardStatus] = useState<'idle' | 'working' | 'downloaded'>('idle')
+  const dailyCardRef = useRef<HTMLDivElement>(null)
+
+  async function shareDailyCard(e: React.MouseEvent) {
+    e.preventDefault()
+    e.stopPropagation()
+    if (!dailyCardRef.current) return
+    setDailyCardStatus('working')
+    const result = await shareCardImage(dailyCardRef.current, {
+      fileName: 'astra-personal-day.png',
+      shareText: "My Astra numerology Personal Day — check yours.",
+    })
+    setDailyCardStatus(result === 'downloaded' ? 'downloaded' : 'idle')
+    if (result === 'downloaded') setTimeout(() => setDailyCardStatus('idle'), 2000)
+  }
 
   const transits = useMemo(() => {
     if (!chart) return null
@@ -246,13 +264,37 @@ export default function DashboardPage() {
                 <Hash className="size-4" strokeWidth={1.75} />
                 <span className="text-xs font-medium uppercase tracking-wide">Personal Day</span>
               </div>
-              <span className="nums-tabular text-lg text-ink">{personalDay.value}</span>
+              <div className="flex items-center gap-3">
+                <span className="nums-tabular text-lg text-ink">{personalDay.value}</span>
+                <button
+                  onClick={shareDailyCard}
+                  disabled={dailyCardStatus === 'working'}
+                  className="flex items-center gap-1 text-xs text-ink-faint hover:text-ink"
+                >
+                  <Share2 className="size-3.5" strokeWidth={1.75} />
+                  {dailyCardStatus === 'working' ? 'Preparing…' : dailyCardStatus === 'downloaded' ? 'Downloaded!' : 'Share'}
+                </button>
+              </div>
             </div>
             <p className="mt-2 text-sm text-ink-muted">
               {personalDayMeaning.title} — {personalDayMeaning.positiveTraits[0]?.toLowerCase()}. See your full
               numerology reading →
             </p>
           </Card>
+
+          <div className="pointer-events-none fixed left-[-9999px] top-0" aria-hidden="true">
+            <ShareCard
+              ref={dailyCardRef}
+              variant="personalDay"
+              data={{
+                dateLabel: today,
+                value: personalDay.value,
+                isMaster: personalDay.isMaster,
+                title: personalDayMeaning.title,
+                blurb: personalDayMeaning.positiveTraits[0] ?? '',
+              }}
+            />
+          </div>
         </Link>
       )}
 

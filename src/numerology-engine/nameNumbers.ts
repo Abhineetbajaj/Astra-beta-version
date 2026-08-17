@@ -1,4 +1,4 @@
-import { PYTHAGOREAN_LETTER_VALUES } from './letterValues'
+import { CHALDEAN_LETTER_VALUES, PYTHAGOREAN_LETTER_VALUES } from './letterValues'
 import { isMasterNumber, reduceToSingleDigitOrMaster } from './reduction'
 import type { NumberResult, NumerologySystem } from './types'
 
@@ -25,10 +25,15 @@ function isVowel(letters: string, index: number): boolean {
   return !adjacentVowel
 }
 
+/**
+ * Vedic name numbers ("Namank") use Chaldean-style letter values per the research this engine is
+ * built from — so 'vedic' shares Chaldean's table here rather than duplicating it. Only the
+ * date-based numbers (Life Path/Birthday, Mulank/Bhagyank in vedic.ts) differ from Chaldean.
+ */
 function valueFor(letter: string, system: NumerologySystem): number {
-  if (system !== 'pythagorean') throw new Error(`Numerology system '${system}' is not yet supported.`)
-  const value = PYTHAGOREAN_LETTER_VALUES[letter]
-  if (value === undefined) throw new Error(`No Pythagorean value for letter '${letter}'`)
+  const table = system === 'pythagorean' ? PYTHAGOREAN_LETTER_VALUES : CHALDEAN_LETTER_VALUES
+  const value = table[letter]
+  if (value === undefined) throw new Error(`No letter value for '${letter}' under system '${system}'`)
   return value
 }
 

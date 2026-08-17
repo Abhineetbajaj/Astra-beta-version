@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState } from 'react'
+import { useEffect, useMemo, useRef, useState } from 'react'
 import type { FormEvent } from 'react'
 import { motion } from 'framer-motion'
 import { Hash, Heart, Pencil, Share2, Sparkles } from 'lucide-react'
@@ -6,15 +6,23 @@ import { useAuthStore } from '@/store/authStore'
 import { supabase } from '@/lib/supabaseClient'
 import { callEdgeFunction } from '@/lib/edgeFunctions'
 import { computeCoreNumbers, computeNumerologyCompatibility, computePersonalCycles } from '@/numerology-engine'
-import type { CoreNumbers, NumberResult, NumerologyCompatibility } from '@/numerology-engine'
+import type { CoreNumbers, NumberResult, NumerologyCompatibility, NumerologySystem } from '@/numerology-engine'
+import { chaldeanCompoundExpressionNumber, meaningForCompound } from '@/numerology-engine/chaldean'
+import { bhagyankNumber, loShuGrid, missingNumbers, mulankNumber, namankNumber, noteForMissingNumber } from '@/numerology-engine/vedic'
 import { meaningForNumber } from '@/data/numerologyMeanings'
+import { NUMEROLOGY_SYSTEMS } from '@/data/numerologySystems'
+import { planetForNumber } from '@/data/numerologyPlanets'
 import { highlightGlossaryTerms } from '@/lib/highlightGlossaryTerms'
 import GlossaryTerm from '@/components/GlossaryTerm'
+import ShareCard from '@/components/share/ShareCard'
+import { shareCardImage } from '@/lib/shareCardImage'
+import LoShuGridDisplay from '@/components/numerology/LoShuGridDisplay'
 import { Card } from '@/components/ui/Card'
 import { Button } from '@/components/ui/Button'
 import { Input } from '@/components/ui/Input'
 import { Badge } from '@/components/ui/Badge'
 import { Skeleton } from '@/components/ui/Skeleton'
+import { cn } from '@/lib/cn'
 import type { NumerologyCompatibilityReadingRow, NumerologyDailyReadingRow, NumerologyReadingRow } from '@/types/db'
 
 const CORE_NUMBER_ROWS: { key: keyof CoreNumbers; label: string; glossaryTerm: string }[] = [
@@ -43,6 +51,8 @@ export default function NumerologyPage() {
   const selfBirthProfile = useAuthStore((s) => s.selfBirthProfile)
   const refreshUserData = useAuthStore((s) => s.refreshUserData)
 
+  const [system, setSystem] = useState<NumerologySystem>('pythagorean')
+
   const [editingName, setEditingName] = useState(false)
   const [nameInput, setNameInput] = useState(selfBirthProfile?.name ?? '')
   const [savingName, setSavingName] = useState(false)
@@ -61,16 +71,36 @@ export default function NumerologyPage() {
   const [compatReading, setCompatReading] = useState<NumerologyCompatibilityReadingRow | null>(null)
   const [compatLoading, setCompatLoading] = useState(false)
   const [compatError, setCompatError] = useState<string | null>(null)
-  const [shareStatus, setShareStatus] = useState<'idle' | 'copied'>('idle')
+  const [compatCardStatus, setCompatCardStatus] = useState<'idle' | 'working' | 'downloaded'>('idle')
+  const [dailyCardStatus, setDailyCardStatus] = useState<'idle' | 'working' | 'downloaded'>('idle')
+  const compatCardRef = useRef<HTMLDivElement>(null)
+  const dailyCardRef = useRef<HTMLDivElement>(null)
 
   const coreNumbers = useMemo(() => {
     if (!selfBirthProfile) return null
     return computeCoreNumbers({
       fullName: selfBirthProfile.name,
       dateOfBirth: selfBirthProfile.date_of_birth,
-      system: 'pythagorean',
+      system,
     })
-  }, [selfBirthProfile])
+  }, [selfBirthProfile, system])
+
+  // Chaldean-only: the compound (10-52) Expression total, never discarded in favor of just the
+  // reduced root. Vedic-only: Mulank/Bhagyank/Namank plus the Lo Shu grid and its missing numbers.
+  const chaldeanExtra = useMemo(() => {
+    if (!selfBirthProfile || system !== 'chaldean') return null
+    const expression = chaldeanCompoundExpressionNumber(selfBirthProfile.name)
+    return { expression, meaning: meaningForCompound(expression.compound) }
+  }, [selfBirthProfile, system])
+
+  const vedicExtra = useMemo(() => {
+    if (!selfBirthProfile || system !== 'vedic') return null
+    const mulank = mulankNumber(selfBirthProfile.date_of_birth)
+    const bhagyank = bhagyankNumber(selfBirthProfile.date_of_birth)
+    const namank = namankNumber(selfBirthProfile.name)
+    const grid = loShuGrid(selfBirthProfile.date_of_birth)
+    return { mulank, bhagyank, namank, grid, missing: missingNumbers(grid) }
+  }, [selfBirthProfile, system])
 
   const personalCycles = useMemo(() => {
     if (!selfBirthProfile) return null
@@ -98,15 +128,19 @@ export default function NumerologyPage() {
       .finally(() => setLoadingDaily(false))
   }, [selfBirthProfile])
 
-  // Read the most recent already-generated reading rather than always demanding a fresh Gemini
-  // call — the AI budget is shared across every feature and user, same pattern as FinancialPage.
+  // Read the most recent already-generated reading for the currently-selected system rather than
+  // always demanding a fresh Gemini call — the AI budget is shared across every feature and user,
+  // same pattern as FinancialPage. Re-runs (and clears the stale reading) whenever the system tab changes.
   useEffect(() => {
+    setReading(null)
     if (!session || !selfBirthProfile) return setLoadingExisting(false)
+    setLoadingExisting(true)
     let cancelled = false
     supabase
       .from('numerology_readings')
       .select('*')
       .eq('birth_profile_id', selfBirthProfile.id)
+      .eq('system', system)
       .order('created_at', { ascending: false })
       .limit(1)
       .maybeSingle()
@@ -118,7 +152,7 @@ export default function NumerologyPage() {
     return () => {
       cancelled = true
     }
-  }, [session, selfBirthProfile])
+  }, [session, selfBirthProfile, system])
 
   async function generateReading() {
     if (!selfBirthProfile) return
@@ -127,6 +161,7 @@ export default function NumerologyPage() {
     try {
       const { reading } = await callEdgeFunction<{ reading: NumerologyReadingRow }>('numerology-reading', {
         birthProfileId: selfBirthProfile.id,
+        system,
       })
       setReading(reading)
     } catch (err) {
@@ -155,22 +190,25 @@ export default function NumerologyPage() {
   }
 
   async function shareCompatibility() {
-    if (!compatPreview) return
-    const text =
-      `${selfBirthProfile?.name} & ${partnerName} numerology match: ${compatPreview.total}/${compatPreview.max} — ` +
-      compatPreview.dimensions.map((d) => `${d.label} ${d.valueA}+${d.valueB} (${d.verdict})`).join(', ') +
-      '. Check yours on Astra.'
-    if (navigator.share) {
-      try {
-        await navigator.share({ text })
-      } catch {
-        // user cancelled the native share sheet — not an error
-      }
-      return
-    }
-    await navigator.clipboard.writeText(text)
-    setShareStatus('copied')
-    setTimeout(() => setShareStatus('idle'), 2000)
+    if (!compatPreview || !compatCardRef.current) return
+    setCompatCardStatus('working')
+    const result = await shareCardImage(compatCardRef.current, {
+      fileName: `astra-compatibility-${selfBirthProfile?.name}-${partnerName}.png`,
+      shareText: `${selfBirthProfile?.name} & ${partnerName}'s numerology compatibility — check yours on Astra.`,
+    })
+    setCompatCardStatus(result === 'downloaded' ? 'downloaded' : 'idle')
+    if (result === 'downloaded') setTimeout(() => setCompatCardStatus('idle'), 2000)
+  }
+
+  async function shareDailyCard() {
+    if (!dailyCardRef.current) return
+    setDailyCardStatus('working')
+    const result = await shareCardImage(dailyCardRef.current, {
+      fileName: 'astra-personal-day.png',
+      shareText: "My Astra numerology Personal Day — check yours.",
+    })
+    setDailyCardStatus(result === 'downloaded' ? 'downloaded' : 'idle')
+    if (result === 'downloaded') setTimeout(() => setDailyCardStatus('idle'), 2000)
   }
 
   async function handleSaveName(e: FormEvent) {
@@ -194,7 +232,7 @@ export default function NumerologyPage() {
         <Hash className="mx-auto size-6 text-accent" strokeWidth={1.5} />
         <h1 className="mt-3 font-display text-4xl">Numerology</h1>
         <p className="mt-2 text-ink-muted">
-          Your core numbers, computed the Pythagorean way, from{' '}
+          Your core numbers, computed the {NUMEROLOGY_SYSTEMS.find((s) => s.id === system)?.label} way, from{' '}
           {editingName ? (
             <span className="text-ink">the name below</span>
           ) : (
@@ -226,6 +264,23 @@ export default function NumerologyPage() {
         )}
       </div>
 
+      <div className="flex justify-center gap-1.5 rounded-full border border-line bg-paper-raised p-1">
+        {NUMEROLOGY_SYSTEMS.map((s) => (
+          <button
+            key={s.id}
+            type="button"
+            title={s.blurb}
+            onClick={() => setSystem(s.id)}
+            className={cn(
+              'flex-1 rounded-full px-4 py-2 text-sm font-medium transition-colors',
+              system === s.id ? 'bg-paper text-ink shadow-sm' : 'text-ink-muted hover:text-ink',
+            )}
+          >
+            {s.label}
+          </button>
+        ))}
+      </div>
+
       <Card>
         <div className="flex items-center gap-2 text-ink-muted">
           <Sparkles className="size-4" strokeWidth={1.75} />
@@ -248,19 +303,27 @@ export default function NumerologyPage() {
             {highlightGlossaryTerms(dailyReading.body)}
           </motion.p>
         )}
-        <div className="mt-4 flex gap-4 text-xs text-ink-faint">
-          <span>
-            <GlossaryTerm term="personal year">Personal Year</GlossaryTerm> {personalCycles.personalYear.value}
-          </span>
-          <span>
-            <GlossaryTerm term="personal month">Personal Month</GlossaryTerm> {personalCycles.personalMonth.value}
-          </span>
+        <div className="mt-4 flex items-center justify-between">
+          <div className="flex gap-4 text-xs text-ink-faint">
+            <span>
+              <GlossaryTerm term="personal year">Personal Year</GlossaryTerm> {personalCycles.personalYear.value}
+            </span>
+            <span>
+              <GlossaryTerm term="personal month">Personal Month</GlossaryTerm> {personalCycles.personalMonth.value}
+            </span>
+          </div>
+          <Button type="button" variant="outline" size="sm" onClick={shareDailyCard} disabled={dailyCardStatus === 'working'}>
+            <Share2 className="size-3.5" strokeWidth={1.75} />
+            {dailyCardStatus === 'working' ? 'Preparing…' : dailyCardStatus === 'downloaded' ? 'Downloaded!' : 'Share'}
+          </Button>
         </div>
       </Card>
 
       <Card>
         <h2 className="font-display text-lg">Your core numbers</h2>
-        <p className="mt-1 text-sm text-ink-muted">Pythagorean system.</p>
+        <p className="mt-1 text-sm text-ink-muted">
+          {NUMEROLOGY_SYSTEMS.find((s) => s.id === system)?.label} system.
+        </p>
         <div className="mt-5 overflow-x-auto">
           <table className="w-full min-w-[360px] text-sm">
             <tbody className="divide-y divide-line">
@@ -277,6 +340,63 @@ export default function NumerologyPage() {
             </tbody>
           </table>
         </div>
+
+        {chaldeanExtra && (
+          <div className="mt-5 border-t border-line pt-5">
+            <div className="flex items-center justify-between">
+              <span className="text-sm text-ink-muted">Compound Expression</span>
+              <span className="nums-tabular text-lg text-ink">
+                {chaldeanExtra.expression.root.value}{' '}
+                <span className="text-ink-faint">(compound {chaldeanExtra.expression.compound})</span>
+              </span>
+            </div>
+            {chaldeanExtra.meaning && (
+              <div className="mt-2">
+                <p className="font-medium text-ink">{chaldeanExtra.meaning.title}</p>
+                <p className="text-sm text-ink-muted">{chaldeanExtra.meaning.summary}</p>
+              </div>
+            )}
+            <p className="mt-3 text-xs text-ink-faint">
+              Chaldean never discards the compound (10-52) total in favor of just its reduced root — both are read together.
+            </p>
+          </div>
+        )}
+
+        {vedicExtra && (
+          <div className="mt-5 space-y-4 border-t border-line pt-5">
+            <div className="flex items-center justify-between">
+              <span className="text-sm text-ink-muted">Mulank (Psychic/Driver)</span>
+              <span className="nums-tabular text-ink">
+                {vedicExtra.mulank} <span className="text-ink-faint">· ruled by {planetForNumber(vedicExtra.mulank)?.planet}</span>
+              </span>
+            </div>
+            <div className="flex items-center justify-between">
+              <span className="text-sm text-ink-muted">Bhagyank (Destiny/Conductor)</span>
+              <span className="nums-tabular text-ink">
+                {vedicExtra.bhagyank} <span className="text-ink-faint">· ruled by {planetForNumber(vedicExtra.bhagyank)?.planet}</span>
+              </span>
+            </div>
+            <div className="flex items-center justify-between">
+              <span className="text-sm text-ink-muted">Namank (Name Number)</span>
+              <NumberBadge result={vedicExtra.namank} />
+            </div>
+            <div>
+              <p className="mb-2 text-sm text-ink-muted">Lo Shu grid</p>
+              <div className="max-w-[220px]">
+                <LoShuGridDisplay grid={vedicExtra.grid} />
+              </div>
+              {vedicExtra.missing.length > 0 && (
+                <div className="mt-3 space-y-1.5">
+                  {vedicExtra.missing.map((n) => (
+                    <p key={n} className="text-xs text-ink-faint">
+                      <span className="font-medium text-ink-muted">Missing {n}:</span> {noteForMissingNumber(n)}
+                    </p>
+                  ))}
+                </div>
+              )}
+            </div>
+          </div>
+        )}
       </Card>
 
       <div className="space-y-4">
@@ -416,9 +536,9 @@ export default function NumerologyPage() {
               <Button type="button" variant="accent" onClick={generateCompatibility} disabled={compatLoading}>
                 {compatLoading ? 'Reading the match…' : compatReading ? 'Regenerate reading' : 'Get the full reading'}
               </Button>
-              <Button type="button" variant="outline" onClick={shareCompatibility}>
+              <Button type="button" variant="outline" onClick={shareCompatibility} disabled={compatCardStatus === 'working'}>
                 <Share2 className="size-4" strokeWidth={1.75} />
-                {shareStatus === 'copied' ? 'Copied!' : 'Share'}
+                {compatCardStatus === 'working' ? 'Preparing…' : compatCardStatus === 'downloaded' ? 'Downloaded!' : 'Share'}
               </Button>
             </div>
 
@@ -436,6 +556,28 @@ export default function NumerologyPage() {
           </motion.div>
         )}
       </Card>
+
+      {/* Off-screen — rendered only so shareCardImage() can capture them, never shown in layout. */}
+      <div className="pointer-events-none fixed left-[-9999px] top-0" aria-hidden="true">
+        {compatPreview && (
+          <ShareCard
+            ref={compatCardRef}
+            variant="compatibility"
+            data={{ selfName: selfBirthProfile.name, partnerName, compatibility: compatPreview }}
+          />
+        )}
+        <ShareCard
+          ref={dailyCardRef}
+          variant="personalDay"
+          data={{
+            dateLabel: new Date().toLocaleDateString('en-US', { weekday: 'long', day: 'numeric', month: 'long' }),
+            value: personalCycles.personalDay.value,
+            isMaster: personalCycles.personalDay.isMaster,
+            title: meaningForNumber(personalCycles.personalDay.value).title,
+            blurb: meaningForNumber(personalCycles.personalDay.value).positiveTraits[0] ?? '',
+          }}
+        />
+      </div>
     </div>
   )
 }
