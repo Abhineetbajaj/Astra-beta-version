@@ -273,16 +273,51 @@ using the exact same `x-cron-secret`/`vault.decrypted_secrets('cron_secret')` pa
 - **Content is real, computed fact only — never manufactured urgency.** Today's Panchang event
   (Ekadashi/Amavasya/Purnima/Sankranti/Navratri), if any, is the same notification for every
   subscriber (panchang isn't location-specific in this engine, so it's computed once per run, not
-  per user); otherwise a generic "today's reading is ready" fallback. **Deliberately does NOT
-  send Rahu Kaal/muhurta-style notifications** — that timing engine (sunrise/sunset,
-  choghadiya) doesn't exist yet; adding that content is a real feature, not a copy change, and
-  must wait until the engine backing it is actually built.
+  per user) — otherwise a generic "today's reading is ready" fallback. **Now also appends each
+  user's own Rahu Kaal window**, computed per-user from their `birth_profiles` lat/lon (see "Timing
+  Engine" below) — a once-a-day informational heads-up, not a live "starts in 20 minutes" alert
+  (that would need per-user-timed scheduling this single daily cron run doesn't do).
 - **iOS limitation, not a bug**: Safari only allows web push after the user adds Astra to their
   home screen (`Add to Home Screen`) — plain mobile Safari tabs cannot receive push at all. The
   Profile toggle explains this inline rather than silently failing.
 - **Known gap**: no VAPID key rotation tooling, and no per-category notification preferences (it's
   all-or-nothing today, same as the daily digest) — both fine for a first version, worth revisiting
   once there's more than one notification type actually competing for the same daily send.
+
+## Timing Engine
+
+Rahu Kaal, Yamaganda, Gulika Kaal, Choghadiya, Hora (planetary hours), and Abhijit Muhurta —
+`src/astro-engine/sunTimes.ts` (real sunrise/sunset via `astronomy-engine`'s `SearchRiseSet`,
+already a dependency, no new astronomy) + `src/astro-engine/muhurta.ts` (pure arithmetic on those
+instants — no ephemeris calls of its own). Surfaced on Dashboard via `TimingCard.tsx`, and folded
+into the daily push notification (see above).
+
+- **Accuracy discipline**: this feature's entire value proposition is being more precise than a
+  chatbot that hallucinates these times, so the classical weekday tables in `muhurta.ts`
+  (Rahu Kaal/Yamaganda/Gulika Kaal octant-by-weekday, Choghadiya day/night starting-name-by-weekday)
+  were cross-checked against drikpanchang.com's own published Sunday and Monday times before being
+  committed — zero discrepancies across all three inauspicious-period tables and the Choghadiya
+  tables. The engine's own tests encode these same hand-verified reference values
+  (`__tests__/muhurta.test.ts`) — if you ever touch these tables, re-verify against a second
+  published source the same way, this is the one place in the whole engine where a silent
+  transposition error would be worst.
+- **`weekday` throughout `muhurta.ts` means "the weekday this Vara belongs to"** (i.e.
+  `sunrise.getUTCDay()`), not the calendar weekday of the clock time being queried — the classical
+  day runs sunrise-to-sunrise, so the night after Sunday's sunrise is still "Sunday" for
+  Choghadiya/Hora purposes even once the clock has passed midnight into Monday. Callers must pass
+  the same `weekday` to both the day and night functions for a given Vara.
+- **Abhijit Muhurta's width scales with actual day length** (`dayMs / 30`, i.e. 1 of 15 equal
+  divisions of daylight, centered on solar noon) rather than a fixed 48 minutes — stays correct
+  away from the equator/equinox, unlike some published "solar noon ± 24 min" shortcuts that quietly
+  assume a 12-hour day.
+- **Hora is shown as "current planetary hour" only, not a full 24-row table** — a deliberate v1
+  scope cut to keep the Dashboard card glanceable; `horasForVara()` computes all 24, so a full table
+  view is a UI-only addition later, not new engine work.
+- **Not built yet**: personalized muhurta ("best 3 days this month to sign a contract, given your
+  chart") — that needs cross-referencing these timing windows against houses/dasha, a meaningfully
+  bigger lift than displaying today's windows, deliberately deferred past this v1.
+- Duplicated into `_shared/astro-engine/sunTimes.ts`/`muhurta.ts` for Deno, same "keep in sync"
+  convention as the rest of the engine.
 
 ## Key files & folders
 

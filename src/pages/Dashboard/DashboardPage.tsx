@@ -16,6 +16,7 @@ import { highlightGlossaryTerms } from '@/lib/highlightGlossaryTerms'
 import GlossaryTerm from '@/components/GlossaryTerm'
 import ShareCard from '@/components/share/ShareCard'
 import { shareCardImage } from '@/lib/shareCardImage'
+import TimingCard from '@/components/muhurta/TimingCard'
 import { Card } from '@/components/ui/Card'
 import { Skeleton } from '@/components/ui/Skeleton'
 import { Button } from '@/components/ui/Button'
@@ -255,6 +256,8 @@ export default function DashboardPage() {
           </div>
         ))}
       </div>
+
+      <TimingCard lat={selfBirthProfile.lat} lon={selfBirthProfile.lon} />
 
       {personalDay && personalDayMeaning && (
         <Link to="/numerology" className="block">
