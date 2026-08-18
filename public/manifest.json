@@ -1,0 +1,17 @@
+{
+  "name": "Astra — Vedic Astrology & Numerology",
+  "short_name": "Astra",
+  "description": "Real astrology, numerology, and spiritual wellness — grounded in your actual chart.",
+  "start_url": "/dashboard",
+  "display": "standalone",
+  "background_color": "#faf7f1",
+  "theme_color": "#b5502f",
+  "icons": [
+    {
+      "src": "/favicon.svg",
+      "sizes": "any",
+      "type": "image/svg+xml",
+      "purpose": "any"
+    }
+  ]
+}

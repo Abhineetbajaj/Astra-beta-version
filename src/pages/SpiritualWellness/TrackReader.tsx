@@ -45,7 +45,7 @@ export default function TrackReader({
   const paragraphs = track.script_text.split('\n').filter(Boolean)
 
   return (
-    <Card className="border-accent/30">
+    <Card className="border-mind/30">
       <div className="flex items-start justify-between gap-4">
         <div>
           <h2 className="font-display text-xl">{track.title}</h2>
@@ -80,7 +80,7 @@ export default function TrackReader({
           className="flex items-center gap-1.5 text-sm text-ink-muted hover:text-ink"
           title={favorited ? 'Remove from favorites' : 'Add to favorites'}
         >
-          <Heart className={favorited ? 'size-4 fill-accent text-accent' : 'size-4'} strokeWidth={1.75} />
+          <Heart className={favorited ? 'size-4 fill-mind text-mind' : 'size-4'} strokeWidth={1.75} />
           {favorited ? 'Favorited' : 'Favorite'}
         </button>
       </div>

@@ -1,4 +1,4 @@
-import { useState } from 'react'
+import { useEffect, useState } from 'react'
 import type { FormEvent } from 'react'
 import { Check } from 'lucide-react'
 import { Button } from '@/components/ui/Button'
@@ -9,6 +9,7 @@ import { useAuthStore } from '@/store/authStore'
 import { supabase } from '@/lib/supabaseClient'
 import { callEdgeFunction } from '@/lib/edgeFunctions'
 import { resolveTimeZone, resolveHistoricalOffsetMinutes } from '@/services/timezoneService'
+import { isPushSupported, getExistingPushSubscription, subscribeToPush, unsubscribeFromPush } from '@/lib/push'
 import PlaceOfBirthField, { type PlaceOfBirthValue } from '@/components/forms/PlaceOfBirthField'
 import BirthDateTimeFields from '@/components/forms/BirthDateTimeFields'
 
@@ -31,6 +32,18 @@ export default function ProfilePage() {
   const [submitting, setSubmitting] = useState(false)
   const [savingDigestOptIn, setSavingDigestOptIn] = useState(false)
 
+  const [pushEnabled, setPushEnabled] = useState(false)
+  const [pushLoading, setPushLoading] = useState(true)
+  const [pushSaving, setPushSaving] = useState(false)
+  const [pushError, setPushError] = useState<string | null>(null)
+
+  useEffect(() => {
+    if (!isPushSupported()) return setPushLoading(false)
+    getExistingPushSubscription()
+      .then((sub) => setPushEnabled(!!sub))
+      .finally(() => setPushLoading(false))
+  }, [])
+
   if (!session || !profile) return null
 
   async function handleDigestOptInChange(checked: boolean) {
@@ -40,6 +53,23 @@ export default function ProfilePage() {
       await refreshUserData()
     } finally {
       setSavingDigestOptIn(false)
+    }
+  }
+
+  async function handlePushChange(checked: boolean) {
+    setPushSaving(true)
+    setPushError(null)
+    try {
+      if (checked) {
+        await subscribeToPush(session!.user.id)
+      } else {
+        await unsubscribeFromPush()
+      }
+      setPushEnabled(checked)
+    } catch (err) {
+      setPushError(err instanceof Error ? err.message : 'Could not update notification settings.')
+    } finally {
+      setPushSaving(false)
     }
   }
 
@@ -134,6 +164,29 @@ export default function ProfilePage() {
               checked={profile.daily_digest_opt_in}
               onCheckedChange={handleDigestOptInChange}
               className={savingDigestOptIn ? 'opacity-60' : undefined}
+            />
+          </div>
+        </Card>
+
+        <Card>
+          <div className="flex items-center justify-between gap-4">
+            <div>
+              <h2 className="font-display text-lg">Push notifications</h2>
+              <p className="mt-1 text-sm text-ink-muted">
+                A quiet nudge when there's something real to know — a festival day, or your reading is ready. Never more than a couple a day.
+              </p>
+              {!isPushSupported() && !pushLoading && (
+                <p className="mt-2 text-xs text-ink-faint">
+                  Not supported in this browser yet — on iPhone, add Astra to your home screen first (Share → Add to Home Screen), then this will work.
+                </p>
+              )}
+              {pushError && <p className="mt-2 text-xs text-negative">{pushError}</p>}
+            </div>
+            <Switch
+              checked={pushEnabled}
+              onCheckedChange={handlePushChange}
+              disabled={pushLoading || pushSaving || !isPushSupported()}
+              className={pushSaving ? 'opacity-60' : undefined}
             />
           </div>
         </Card>

@@ -408,6 +408,10 @@ verify_jwt = false
 [functions.generate-meditation-library]
 verify_jwt = false
 
+# Same reasoning again: send-push-notifications is pg_cron-triggered, no Supabase session.
+[functions.send-push-notifications]
+verify_jwt = false
+
 [analytics]
 enabled = true
 port = 54327

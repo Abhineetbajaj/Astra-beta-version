@@ -24,6 +24,24 @@
   --color-positive: #4f6d4b;
   --color-negative: #a3402f;
 
+  /* Spiritual Wellness pillars (Body/Mind/Spirit) — deliberately more vibrant than the rest of
+     the app's restrained palette. Same paper/soft/ink triad shape as --color-accent-* so every
+     existing Badge/Card/GlossaryTerm pattern works unchanged, just re-skinned per pillar. */
+  --color-body: #d1573c;
+  --color-body-strong: #b8442c;
+  --color-body-soft: #f9dcd2;
+  --color-body-ink: #fff8f5;
+
+  --color-mind: #5b5bd6;
+  --color-mind-strong: #4747b8;
+  --color-mind-soft: #e4e2fb;
+  --color-mind-ink: #f8f7ff;
+
+  --color-spirit: #c98a1a;
+  --color-spirit-strong: #ab7310;
+  --color-spirit-soft: #f6e6bf;
+  --color-spirit-ink: #fffaf0;
+
   /* Theme-INVARIANT tokens for surfaces that should always look dark (e.g. the
      Auth page hero panel) — deliberately not redefined in the dark-mode blocks
      below, unlike --color-ink/--color-paper which are role tokens that swap. */
@@ -51,6 +69,21 @@
 
   --color-positive: #8fae86;
   --color-negative: #d38571;
+
+  --color-body: #ea8267;
+  --color-body-strong: #f2a189;
+  --color-body-soft: #3a241c;
+  --color-body-ink: #2a1710;
+
+  --color-mind: #8f8ff2;
+  --color-mind-strong: #adadf5;
+  --color-mind-soft: #29294a;
+  --color-mind-ink: #17172b;
+
+  --color-spirit: #e0ab3f;
+  --color-spirit-strong: #ecc470;
+  --color-spirit-soft: #3d2f14;
+  --color-spirit-ink: #241a08;
 }
 
 @media (prefers-color-scheme: dark) {
@@ -71,6 +104,21 @@
 
     --color-positive: #8fae86;
     --color-negative: #d38571;
+
+    --color-body: #ea8267;
+    --color-body-strong: #f2a189;
+    --color-body-soft: #3a241c;
+    --color-body-ink: #2a1710;
+
+    --color-mind: #8f8ff2;
+    --color-mind-strong: #adadf5;
+    --color-mind-soft: #29294a;
+    --color-mind-ink: #17172b;
+
+    --color-spirit: #e0ab3f;
+    --color-spirit-strong: #ecc470;
+    --color-spirit-soft: #3d2f14;
+    --color-spirit-ink: #241a08;
   }
 }
 
@@ -91,6 +139,21 @@
 
   --color-positive: var(--color-positive);
   --color-negative: var(--color-negative);
+
+  --color-body: var(--color-body);
+  --color-body-strong: var(--color-body-strong);
+  --color-body-soft: var(--color-body-soft);
+  --color-body-ink: var(--color-body-ink);
+
+  --color-mind: var(--color-mind);
+  --color-mind-strong: var(--color-mind-strong);
+  --color-mind-soft: var(--color-mind-soft);
+  --color-mind-ink: var(--color-mind-ink);
+
+  --color-spirit: var(--color-spirit);
+  --color-spirit-strong: var(--color-spirit-strong);
+  --color-spirit-soft: var(--color-spirit-soft);
+  --color-spirit-ink: var(--color-spirit-ink);
 
   --color-fixed-dark: var(--color-fixed-dark);
   --color-fixed-dark-ink: var(--color-fixed-dark-ink);

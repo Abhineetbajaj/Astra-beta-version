@@ -1,3 +1,6 @@
+// Mind pillar — the former standalone "Listen" page, unchanged in substance (same tracks, same
+// RLS gating, same hooks), just re-themed with the Mind pillar's colour and folded into the
+// Spiritual Wellness shell instead of living at its own /listen route.
 import { useEffect, useRef, useState } from 'react'
 import { motion } from 'framer-motion'
 import { Headphones, Lock, Sparkles } from 'lucide-react'
@@ -17,17 +20,17 @@ import { Card } from '@/components/ui/Card'
 import { Skeleton } from '@/components/ui/Skeleton'
 import { DisclaimerBanner } from '@/components/ui/DisclaimerBanner'
 import type { MeditationTrackRow } from '@/types/db'
-import TrackReader from '@/pages/Listen/TrackReader'
+import TrackReader from '@/pages/SpiritualWellness/TrackReader'
 
 const DISCLAIMER =
-  'Listen is a reflective, spiritual practice — not a substitute for medical or mental health care. If you\'re struggling, please reach out to a real professional.'
+  'Reflection is a reflective, spiritual practice — not a substitute for medical or mental health care. If you\'re struggling, please reach out to a real professional.'
 const DISCLAIMER_DISMISSED_KEY = 'astra-listen-disclaimer-dismissed'
 
 function TeaserTile({ label, locked, onTap }: { label: string; locked: boolean; onTap: () => void }) {
   return (
     <button
       onClick={onTap}
-      className="flex items-center justify-between rounded-xl border border-line px-4 py-3 text-left text-sm hover:border-line-strong hover:bg-paper-raised"
+      className="flex items-center justify-between rounded-xl border border-line px-4 py-3 text-left text-sm hover:border-mind/40 hover:bg-mind-soft/40"
     >
       {label}
       {locked && <Lock className="size-3.5 text-ink-faint" strokeWidth={1.75} />}
@@ -35,7 +38,7 @@ function TeaserTile({ label, locked, onTap }: { label: string; locked: boolean; 
   )
 }
 
-export default function ListenPage() {
+export default function MindPillar() {
   const session = useAuthStore((s) => s.session)
   const isPremium = useAuthStore((s) => s.isPremium)
   const selfBirthProfile = useAuthStore((s) => s.selfBirthProfile)
@@ -56,8 +59,6 @@ export default function ListenPage() {
     if (!localStorage.getItem(DISCLAIMER_DISMISSED_KEY)) setShowDisclaimer(true)
   }, [])
 
-  // The reader and the upsell both render at the top of the page while the tiles that open them
-  // are near the bottom — without this, tapping a tile looks like nothing happened at all.
   useEffect(() => {
     if (selected || lockedTap) readerRef.current?.scrollIntoView({ behavior: 'smooth', block: 'start' })
   }, [selected, lockedTap])
@@ -74,8 +75,6 @@ export default function ListenPage() {
     if (track) {
       setSelected(track)
     } else {
-      // RLS hides premium rows from non-premium users, so a missing row means either locked or
-      // not-yet-generated. Either way the user gets a real explanation, never a dead tap.
       setLockedTap(label)
     }
   }
@@ -83,14 +82,13 @@ export default function ListenPage() {
   if (!session) return null
 
   return (
-    <div className="space-y-10">
-      <div>
-        <p className="text-xs uppercase tracking-wide text-ink-faint">Listen</p>
-        <h1 className="mt-1 flex items-center gap-2 font-display text-4xl">
-          <Headphones className="size-7 text-accent" strokeWidth={1.5} />
-          Reflect
-        </h1>
-        <p className="mt-2 text-ink-muted">
+    <div className="space-y-6">
+      <div className="rounded-2xl bg-mind-soft px-5 py-4">
+        <div className="flex items-center gap-2 text-mind-strong">
+          <Headphones className="size-5" strokeWidth={1.75} />
+          <span className="text-xs font-semibold uppercase tracking-wide">Mind</span>
+        </div>
+        <p className="mt-1.5 text-sm text-ink-muted">
           Short guided reflections grounded in your real chart — not generic mindfulness.
         </p>
       </div>
@@ -98,10 +96,7 @@ export default function ListenPage() {
       {showDisclaimer && (
         <div className="relative">
           <DisclaimerBanner text={DISCLAIMER} />
-          <button
-            onClick={dismissDisclaimer}
-            className="absolute right-3 top-3 text-xs text-ink-faint underline hover:text-ink"
-          >
+          <button onClick={dismissDisclaimer} className="absolute right-3 top-3 text-xs text-ink-faint underline hover:text-ink">
             Got it
           </button>
         </div>
@@ -111,10 +106,10 @@ export default function ListenPage() {
         {selected && <TrackReader track={selected} userId={session.user.id} onClose={() => setSelected(null)} />}
 
         {lockedTap && !selected && (
-          <Card className="border-accent/30">
+          <Card className="border-mind/30">
             <div className="flex flex-wrap items-center justify-between gap-3">
               <div className="flex items-center gap-2">
-                <Lock className="size-4 text-accent" strokeWidth={1.75} />
+                <Lock className="size-4 text-mind" strokeWidth={1.75} />
                 <p className="text-sm text-ink">
                   {isPremium ? (
                     <>
@@ -128,7 +123,7 @@ export default function ListenPage() {
                 </p>
               </div>
               {!isPremium && (
-                <Link to="/pricing" className="text-sm text-accent hover:underline">
+                <Link to="/pricing" className="text-sm text-mind hover:underline">
                   Upgrade →
                 </Link>
               )}
@@ -139,13 +134,13 @@ export default function ListenPage() {
 
       {history.length > 0 && (
         <section>
-          <h2 className="font-display text-lg">Continue listening</h2>
+          <h3 className="font-display text-base">Continue listening</h3>
           <div className="mt-3 flex gap-3 overflow-x-auto pb-1">
             {history.map((h) => (
               <button
                 key={h.id}
                 onClick={() => setSelected(h.track)}
-                className="shrink-0 rounded-xl border border-line px-4 py-3 text-left text-sm hover:border-line-strong hover:bg-paper-raised"
+                className="shrink-0 rounded-xl border border-line px-4 py-3 text-left text-sm hover:border-mind/40 hover:bg-mind-soft/40"
               >
                 {h.track.title}
               </button>
@@ -155,15 +150,13 @@ export default function ListenPage() {
       )}
 
       <section>
-        <h2 className="font-display text-lg">{MEDITATION_CATEGORIES[0].label}</h2>
+        <h3 className="font-display text-base">{MEDITATION_CATEGORIES[0].label}</h3>
         {todayTrack === undefined && <Skeleton className="mt-3 h-16 w-full" />}
         {todayTrack === null && (
           <div className="mt-3 rounded-xl border border-dashed border-line px-4 py-3.5">
             <p className="text-sm text-ink-muted">
-              Today's reflection is still being written — it's shaped around your current dasha period and the
-              planets moving through your chart right now.
+              Today's reflection is still being written — it's shaped around your current dasha period and the planets moving through your chart right now.
             </p>
-            <p className="mt-1 text-xs text-ink-faint">New reflections are prepared each morning.</p>
           </div>
         )}
         {todayTrack && (
@@ -171,10 +164,10 @@ export default function ListenPage() {
             initial={{ opacity: 0 }}
             animate={{ opacity: 1 }}
             onClick={() => setSelected(todayTrack)}
-            className="mt-3 flex w-full items-center justify-between rounded-xl border border-line px-4 py-3.5 text-left hover:border-line-strong hover:bg-paper-raised"
+            className="mt-3 flex w-full items-center justify-between rounded-xl border border-line px-4 py-3.5 text-left hover:border-mind/40 hover:bg-mind-soft/40"
           >
             <span className="flex items-center gap-2 text-sm">
-              <Sparkles className="size-4 text-accent" strokeWidth={1.75} />
+              <Sparkles className="size-4 text-mind" strokeWidth={1.75} />
               {todayTrack.title}
             </span>
           </motion.button>
@@ -182,12 +175,12 @@ export default function ListenPage() {
       </section>
 
       <section>
-        <h2 className="font-display text-lg">{MEDITATION_CATEGORIES[1].label}</h2>
+        <h3 className="font-display text-base">{MEDITATION_CATEGORIES[1].label}</h3>
         {weeklyTrack === undefined && <Skeleton className="mt-3 h-16 w-full" />}
         {weeklyTrack && (
           <button
             onClick={() => setSelected(weeklyTrack)}
-            className="mt-3 flex w-full items-center justify-between rounded-xl border border-line px-4 py-3.5 text-left hover:border-line-strong hover:bg-paper-raised"
+            className="mt-3 flex w-full items-center justify-between rounded-xl border border-line px-4 py-3.5 text-left hover:border-mind/40 hover:bg-mind-soft/40"
           >
             <span className="text-sm">{weeklyTrack.title}</span>
           </button>
@@ -195,8 +188,7 @@ export default function ListenPage() {
         {weeklyTrack === null && (
           <div className="mt-3 rounded-xl border border-dashed border-line px-4 py-3.5">
             <p className="text-sm text-ink-muted">
-              This week's ritual is still being written — it follows the week's major planetary movement, like a
-              sign change, a retrograde turning, or the nakshatra the Moon is passing through.
+              This week's ritual is still being written — it follows the week's major planetary movement.
             </p>
           </div>
         )}
@@ -204,10 +196,10 @@ export default function ListenPage() {
 
       {panchangTrack && (
         <section>
-          <h2 className="font-display text-lg">{MEDITATION_CATEGORIES[2].label}</h2>
+          <h3 className="font-display text-base">{MEDITATION_CATEGORIES[2].label}</h3>
           <button
             onClick={() => setSelected(panchangTrack)}
-            className="mt-3 flex w-full items-center justify-between rounded-xl border border-accent/30 bg-accent/5 px-4 py-3.5 text-left hover:bg-accent/10"
+            className="mt-3 flex w-full items-center justify-between rounded-xl border border-mind/30 bg-mind-soft px-4 py-3.5 text-left hover:bg-mind-soft/70"
           >
             <span className="text-sm">{panchangTrack.title}</span>
           </button>
@@ -215,7 +207,7 @@ export default function ListenPage() {
       )}
 
       <section>
-        <h2 className="font-display text-lg">{MEDITATION_CATEGORIES[3].label}</h2>
+        <h3 className="font-display text-base">{MEDITATION_CATEGORIES[3].label}</h3>
         <div className="mt-3 grid gap-2 sm:grid-cols-2">
           {NEED_TAGS.map((need) => (
             <TeaserTile
@@ -229,14 +221,14 @@ export default function ListenPage() {
       </section>
 
       <section>
-        <h2 className="font-display text-lg">{MEDITATION_CATEGORIES[4].label}</h2>
+        <h3 className="font-display text-base">{MEDITATION_CATEGORIES[4].label}</h3>
         <div className="mt-3 grid grid-cols-3 gap-2 sm:grid-cols-5">
           {MANTRA_PLANETS.map((m) => (
             <button
               key={m.planet}
               onClick={() => openLibraryTrack('mantra', m.planet, `${m.planet} mantra`)}
               title={m.whenToUse}
-              className="flex flex-col items-center gap-1 rounded-xl border border-line px-3 py-4 text-center hover:border-line-strong hover:bg-paper-raised"
+              className="flex flex-col items-center gap-1 rounded-xl border border-line px-3 py-4 text-center hover:border-mind/40 hover:bg-mind-soft/40"
             >
               <span className="text-sm font-medium">{m.planet}</span>
               {!accessibleKeys.has(m.planet) && <Lock className="size-3 text-ink-faint" strokeWidth={1.75} />}

@@ -219,11 +219,70 @@ the app never silently mixes systems that disagree on letter values.
   per user in the cron batch, which would double the Gemini load per digest run against the
   already-tight shared 20-req/day quota (see the Gemini quota row in the setup checklist below).
   The full AI-narrated Personal Day blurb still only generates when the user opens `/numerology`
-  themselves. **True push notifications (browser/mobile) are not built** — there's no service
-  worker, VAPID keys, or push-subscription table anywhere in this app; "notification" currently
-  means this email digest only, which itself is still Resend-sandboxed to one recipient (see the
-  existing digest gap below). Building real push would be new infrastructure, not an extension of
-  what exists — treat as a separate, larger feature if it's wanted.
+  themselves. Real push notifications now exist too — see "Push notifications" below; this email
+  digest and push are two separate, independent channels, not one built on the other.
+
+## Spiritual Wellness
+
+`/wellness` merges the former standalone "Listen" (meditation/reflection) and "Wellness" (medical
+astrology) pages into one section, framed as three pillars — **Body** (medical readings), **Mind**
+(the old Listen content, unchanged in substance), **Spirit** (new: mantras/stotras) — rather than
+two unrelated features glued together. Deliberately more vibrant than the rest of the app's
+restrained palette (`--color-body`/`--color-mind`/`--color-spirit` in `globals.css`, each with its
+own `-soft`/`-strong`/`-ink` triad, same shape as `--color-accent-*`) — a conscious departure for
+this one section, not a palette-wide change.
+
+- **Body** (`BodyPillar.tsx`) is the old `MedicalPage.tsx` verbatim, just re-skinned. Premium
+  gating moved from a route-level `PremiumGate` (which would have blocked Mind/Spirit too, since
+  it's one page now) to an inline `isPremium` check inside the pillar component — same
+  "upsell instead of the reading" visual as `PremiumGate` itself, just scoped to one tab.
+- **Mind** (`MindPillar.tsx`) is the old `ListenPage.tsx` verbatim (same hooks in
+  `useMeditationTracks.ts`, same taxonomy in `meditationCategories.ts`, same `TrackReader.tsx`,
+  moved into this folder) — free, unchanged gating (RLS still hides Premium rows from free users).
+- **Spirit** (`SpiritPillar.tsx`, `src/data/devotionalTexts.ts`) is new and **entirely free** —
+  static, verified text costs nothing to serve, and free is the explicit priority here. Text-only
+  by deliberate choice (not a placeholder): TTS cannot chant, and real recordings are commercially
+  copyrighted even though the underlying texts (Hanuman Chalisa, the classical stotras) are
+  centuries-old and public domain. **Honesty convention**: entries have `isComplete: false` when
+  they're a verified excerpt (usually the opening/closing verses) rather than the full text —
+  shown as an "Excerpt" badge in the UI, never silently presented as complete. Only Navratri has a
+  real detector today (`panchangEvents.ts`) — the Spirit pillar does NOT claim to auto-detect
+  Diwali/Shivratri/Ganesh Chaturthi; those are just browsable occasion filters. "Prescribed for
+  you" uses the current Mahadasha lord to surface that planet's traditional mantra — same
+  fact-grounded-personalization discipline as everything else, applied to *which* text surfaces,
+  never to the text itself.
+- Old routes `/listen` and `/medical` no longer exist — `MedicalPage.tsx`/`ListenPage.tsx` and
+  their folders were deleted, not left as dead code alongside the new page.
+
+## Push notifications
+
+Self-hosted Web Push (VAPID), no third-party push service (OneSignal/Firebase) — genuinely free at
+any scale. `send-push-notifications` is a pg_cron job (`35 1 * * *`, right after `send-daily-digest`)
+using the exact same `x-cron-secret`/`vault.decrypted_secrets('cron_secret')` pattern.
+
+- **Client**: `src/lib/push.ts` registers `public/sw.js` (minimal — just `push`/`notificationclick`
+  handlers, no offline asset caching) and manages the browser's `PushManager` subscription. The
+  Profile page toggle (mirrors the daily-digest-opt-in `Switch`) calls `subscribeToPush()`/
+  `unsubscribeFromPush()` directly — there's no separate `profiles` opt-in column; "has an active
+  browser subscription row" **is** the opt-in signal.
+- **Server**: `_shared/webPush.ts` wraps `npm:web-push` (Deno npm-compat, same pattern as
+  `npm:@supabase/supabase-js@2` elsewhere). `VAPID_PUBLIC_KEY`/`VAPID_PRIVATE_KEY`/`VAPID_SUBJECT`
+  are Supabase secrets; `VITE_VAPID_PUBLIC_KEY` in the frontend `.env` must be the matching public
+  half. A `410`/`404` send response means the subscription is dead — the row is deleted
+  automatically, same self-cleaning hygiene any push sender needs.
+- **Content is real, computed fact only — never manufactured urgency.** Today's Panchang event
+  (Ekadashi/Amavasya/Purnima/Sankranti/Navratri), if any, is the same notification for every
+  subscriber (panchang isn't location-specific in this engine, so it's computed once per run, not
+  per user); otherwise a generic "today's reading is ready" fallback. **Deliberately does NOT
+  send Rahu Kaal/muhurta-style notifications** — that timing engine (sunrise/sunset,
+  choghadiya) doesn't exist yet; adding that content is a real feature, not a copy change, and
+  must wait until the engine backing it is actually built.
+- **iOS limitation, not a bug**: Safari only allows web push after the user adds Astra to their
+  home screen (`Add to Home Screen`) — plain mobile Safari tabs cannot receive push at all. The
+  Profile toggle explains this inline rather than silently failing.
+- **Known gap**: no VAPID key rotation tooling, and no per-category notification preferences (it's
+  all-or-nothing today, same as the daily digest) — both fine for a first version, worth revisiting
+  once there's more than one notification type actually competing for the same daily send.
 
 ## Key files & folders
 
@@ -264,8 +323,11 @@ src/
     authStore.ts          session + profile + selfBirthProfile + isPremium, synced via onAuthStateChange
     themeStore.ts          unchanged
   pages/                 one folder per route — Dashboard, NatalChart, Compatibility, Chat,
-                         Financial, Medical, Wallet, Pricing, Astrologers, History, Profile,
+                         Financial, Wallet, Pricing, Astrologers, History, Profile,
                          Onboarding, Auth, Numerology (free, not Premium-gated)
+                         SpiritualWellness/ — Body/Mind/Spirit pillars at /wellness (Listen +
+                         Medical merged; see "Spiritual Wellness" section above). No separate
+                         Listen/ or Medical/ folder anymore.
   components/layout/
     AuthGate.tsx          redirect to /auth or /onboarding based on session + selfBirthProfile
     PremiumGate.tsx        route guard for Financial/Medical — shows upsell if not Premium
@@ -313,11 +375,14 @@ supabase/
                             Resend; verify_jwt=false, authenticates via x-cron-secret header instead
     unsubscribe-digest/    public link clicked from the email; verify_jwt=false, authenticates via
                             the profile's unsubscribe_token query param
-    generate-meditation-tracks/    pg_cron-triggered daily (2:00 UTC) — "Listen" section's
-                            time-triggered categories: For You Today (personalized, but generated
-                            once per distinct dasha+natal-Moon-sign combination across all users,
-                            not per user), This Week's Ritual, Panchang Calendar Drops. verify_jwt=
-                            false, same x-cron-secret pattern as send-daily-digest.
+    generate-meditation-tracks/    pg_cron-triggered daily (2:00 UTC) — Spiritual Wellness's Mind
+                            pillar's time-triggered categories: For You Today (personalized, but
+                            generated once per distinct dasha+natal-Moon-sign combination across
+                            all users, not per user), This Week's Ritual, Panchang Calendar Drops.
+                            verify_jwt=false, same x-cron-secret pattern as send-daily-digest.
+    send-push-notifications/    pg_cron-triggered daily (1:35 UTC) — Web Push via
+                            `_shared/webPush.ts`; content is today's real Panchang event if any,
+                            else a generic fallback. verify_jwt=false, same x-cron-secret pattern.
     generate-meditation-library/   manually invoked (not scheduled) — the evergreen "Browse by
                             Need" (7 tags) and "Graha Mantras" (9 planets) libraries. Takes an
                             optional { maxItems } body param and is idempotent via meditation_
@@ -352,7 +417,9 @@ Live project: `uejyelsygtgfkufugwvw` (Supabase, `ap-south-1`/Mumbai).
 | Razorpay account/keys | ❌ Not set — `razorpay-create-order`/`razorpay-webhook` are deployed but will throw clearly (not silently mock) until `RAZORPAY_KEY_ID`/`RAZORPAY_KEY_SECRET`/`RAZORPAY_WEBHOOK_SECRET` are set via `supabase secrets set` |
 | Real transits (Gochara) | ✅ Live — `daily-reading`, `chat`, and the Dashboard "Today's Sky" card all ground content in today's actual planetary positions; Sade Sati/Guru Gochar math hand-verified against the real, publicly-known 2025-2027 Saturn-in-Pisces transit window |
 | `RESEND_API_KEY` / `send-daily-digest` cron | ⚠️ **Live but sandboxed** — `pg_cron` fires daily, the function runs and generates real readings, but Resend's unverified-domain sandbox only delivers to the account owner's own email (`surya.sharma6066@gmail.com`); every other opted-in user's send fails with a clear `validation_error`, confirmed live (11 profiles, 1 sent, rest failed on this restriction). **Verify a domain at resend.com/domains and switch the `from` address off `onboarding@resend.dev` before this reaches real family testers.** |
-| "Listen" meditation section | ✅ Deployed, schema live, RLS-gating verified live (a non-premium account's direct API query only ever sees the one free sample row — confirmed, not just UI-hidden). ⚠️ **Content generation is currently gated by a hard wall**, see the `GEMINI_API_KEY` quota row below — `generate-meditation-library` (evergreen need/mantra library) finished a full run; `generate-meditation-tracks` (today/weekly/panchang, now on a daily 2:00 UTC cron) has **not yet completed a successful run** — it hit the same daily quota before producing any rows. Re-run it (or wait for the next quota reset) before `/listen`'s "For You Today"/"This Week's Ritual" sections will show real content instead of the "still being prepared" placeholder. |
+| Spiritual Wellness — Mind pillar (meditation) | ✅ Deployed, schema live, RLS-gating verified live (a non-premium account's direct API query only ever sees the one free sample row — confirmed, not just UI-hidden). ⚠️ **Content generation is currently gated by a hard wall**, see the `GEMINI_API_KEY` quota row below — `generate-meditation-library` (evergreen need/mantra library) finished a full run; `generate-meditation-tracks` (today/weekly/panchang, now on a daily 2:00 UTC cron) has **not yet completed a successful run** — it hit the same daily quota before producing any rows. Re-run it (or wait for the next quota reset) before `/wellness`'s Mind tab's "For You Today"/"This Week's Ritual" sections will show real content instead of the "still being prepared" placeholder. |
+| Spiritual Wellness — Spirit pillar (mantras) | ✅ Fully live — static, verified text, zero Gemini/backend dependency, free for everyone. |
+| Push notifications | ✅ Deployed and cron-scheduled (`send-push-notifications`, 1:35 UTC daily); manually test-invoked once against the live project (0 real subscribers yet, so `sent: 0` — the pipeline itself is confirmed working end to end). |
 | `GEMINI_API_KEY` daily quota | ⚠️ **The free Gemini tier caps at 20 requests/day** (separate from the smaller per-minute cap already worked around with pacing in `generate-meditation-library`/`generate-meditation-tracks`) — discovered live when `generate-meditation-tracks` 429'd with `GenerateRequestsPerDayPerProjectPerModel-FreeTier`. **This budget is shared across every Gemini-backed feature in the whole app** — daily-reading, chat, financial/medical readings, weekly-report, the digest, and now Listen's generators all draw from the same 20/day, project-wide, not per-user. With ~10 active family accounts each potentially triggering a few calls a day, this is realistically already tight and will cause silent-looking failures (a function just 500s with a 429 body) once usage climbs. **Upgrading to a paid Gemini tier is the real fix** — flag to the user before this surprises them as "the app is broken." |
 | Prokerala | Deliberately unused — see above |
 

@@ -12,9 +12,8 @@ import NatalChartPage from '@/pages/NatalChart/NatalChartPage'
 import CompatibilityPage from '@/pages/Compatibility/CompatibilityPage'
 import ChatPage from '@/pages/Chat/ChatPage'
 import FinancialPage from '@/pages/Financial/FinancialPage'
-import MedicalPage from '@/pages/Medical/MedicalPage'
 import HoroscopePage from '@/pages/Horoscope/HoroscopePage'
-import ListenPage from '@/pages/Listen/ListenPage'
+import SpiritualWellnessPage from '@/pages/SpiritualWellness/SpiritualWellnessPage'
 import NumerologyPage from '@/pages/Numerology/NumerologyPage'
 import AstrologersPage from '@/pages/Astrologers/AstrologersPage'
 import AstrologerDetailPage from '@/pages/Astrologers/AstrologerDetailPage'
@@ -41,11 +40,10 @@ export default function AppRouter() {
           <Route path="/compatibility" element={<CompatibilityPage />} />
           <Route path="/chat" element={<ChatPage />} />
           <Route path="/horoscope" element={<HoroscopePage />} />
-          <Route path="/listen" element={<ListenPage />} />
+          <Route path="/wellness" element={<SpiritualWellnessPage />} />
           <Route path="/numerology" element={<NumerologyPage />} />
           <Route element={<PremiumGate />}>
             <Route path="/financial" element={<FinancialPage />} />
-            <Route path="/medical" element={<MedicalPage />} />
           </Route>
           <Route path="/astrologers" element={<AstrologersPage />} />
           <Route path="/astrologers/:id" element={<AstrologerDetailPage />} />
