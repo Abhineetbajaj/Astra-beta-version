@@ -1,0 +1,30 @@
+# Astra is a client-rendered SPA — most content requires a free account since it's computed from
+# a user's personal birth details. Explicit allow rules per crawler, matching the GEO/AEO research
+# this was built from: GPTBot/ClaudeBot/PerplexityBot don't render JavaScript and only ever see
+# raw HTML, so there's nothing to gain from blocking them and real value in being explicit.
+
+User-agent: *
+Allow: /
+
+User-agent: Googlebot
+Allow: /
+
+User-agent: GPTBot
+Allow: /
+
+User-agent: OAI-SearchBot
+Allow: /
+
+User-agent: ChatGPT-User
+Allow: /
+
+User-agent: ClaudeBot
+Allow: /
+
+User-agent: Claude-SearchBot
+Allow: /
+
+User-agent: PerplexityBot
+Allow: /
+
+Sitemap: https://astraastroconsultancy.com/sitemap.xml

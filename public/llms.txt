@@ -1,0 +1,25 @@
+# Astra
+
+> Astra is a Vedic (sidereal) astrology and numerology web app. Given a person's exact birth date,
+> time, and place, it computes a real astrological birth chart — not a template — and generates
+> chart-specific content: daily and weekly readings, natal chart analysis, compatibility between
+> two people, three numerology systems (Pythagorean, Chaldean, Vedic), a real-time Vedic Timing
+> Engine (Rahu Kaal, Choghadiya, Hora, Abhijit Muhurta computed from actual sunrise/sunset
+> astronomy for the user's exact location), and a Spiritual Wellness section (guided reflections,
+> mantras, festival calendar).
+
+Astrological and numerological facts on Astra are always computed deterministically from real
+astronomical data and classical calculation rules — never invented or guessed by an AI model. The
+AI (Google Gemini) is only ever used to narrate precomputed facts into readable prose; it never
+determines a planetary position, house, dasha period, or number itself.
+
+## Pages
+
+- [Homepage](https://astraastroconsultancy.com/): product overview and sign-up
+- [Pricing](https://astraastroconsultancy.com/pricing): subscription plans
+
+## Notes
+
+Most of Astra's features (birth chart, daily readings, numerology, the Timing Engine, Spiritual
+Wellness) require a free account, since they're computed from a user's personal birth details and
+aren't meaningful without them.
