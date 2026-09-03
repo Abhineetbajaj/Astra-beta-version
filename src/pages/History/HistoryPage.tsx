@@ -2,6 +2,8 @@ import { useEffect, useState } from 'react'
 import { useAuthStore } from '@/store/authStore'
 import { supabase } from '@/lib/supabaseClient'
 import { Card } from '@/components/ui/Card'
+import PageHero from '@/components/layout/PageHero'
+import { Clock } from 'lucide-react'
 import { Badge } from '@/components/ui/Badge'
 import { Skeleton } from '@/components/ui/Skeleton'
 import type { CompatibilityReportRow, DailyReadingRow, FinancialReadingRow, MedicalReadingRow } from '@/types/db'
@@ -46,11 +48,12 @@ export default function HistoryPage() {
 
   return (
     <div className="mx-auto max-w-2xl">
-      <p className="text-xs uppercase tracking-wide text-ink-faint">History</p>
-      <h1 className="mt-1 font-display text-4xl">Your reading history</h1>
-      <p className="mt-2 text-ink-muted">
-        Your saved daily, compatibility, financial, and wellness readings, newest first.
-      </p>
+      <PageHero
+        Icon={Clock}
+        eyebrow="History"
+        title="Your reading history"
+        subtitle="Your saved daily, compatibility, financial, and wellness readings, newest first."
+      />
 
       <div className="mt-8 space-y-3">
         {loading && (

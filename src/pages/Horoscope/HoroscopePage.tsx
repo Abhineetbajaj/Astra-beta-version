@@ -4,6 +4,7 @@ import { Sparkles } from 'lucide-react'
 import { callEdgeFunction } from '@/lib/edgeFunctions'
 import { RASHIS } from '@/data/rashis'
 import { Card } from '@/components/ui/Card'
+import PageHero from '@/components/layout/PageHero'
 import { Skeleton } from '@/components/ui/Skeleton'
 import type { RashiHoroscopeRow } from '@/types/db'
 
@@ -26,14 +27,17 @@ export default function HoroscopePage() {
 
   return (
     <div className="mx-auto max-w-2xl">
-      <div className="text-center">
-        <Sparkles className="mx-auto size-6 text-accent" strokeWidth={1.5} />
-        <h1 className="mt-3 font-display text-4xl">Daily horoscope</h1>
-        <p className="mt-2 text-ink-muted">
-          Pick a sign for a general reading — for your own real chart, see{' '}
-          <span className="text-ink">Today</span>.
-        </p>
-      </div>
+      <PageHero
+        align="center"
+        Icon={Sparkles}
+        title="Daily horoscope"
+        subtitle={
+          <>
+            Pick a sign for a general reading — for your own real chart, see{' '}
+            <span className="text-ink">Today</span>.
+          </>
+        }
+      />
 
       <div className="mt-8 grid grid-cols-3 gap-3 sm:grid-cols-4">
         {RASHIS.map((rashi) => (

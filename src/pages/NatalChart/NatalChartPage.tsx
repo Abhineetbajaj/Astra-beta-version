@@ -8,6 +8,8 @@ import { callEdgeFunction } from '@/lib/edgeFunctions'
 import { currentDashaLords } from '@/astro-engine'
 import { RASHIS } from '@/data/rashis'
 import { Card } from '@/components/ui/Card'
+import PageHero from '@/components/layout/PageHero'
+import { Compass } from 'lucide-react'
 import { Badge } from '@/components/ui/Badge'
 import { Skeleton } from '@/components/ui/Skeleton'
 import { Button } from '@/components/ui/Button'
@@ -91,11 +93,12 @@ export default function NatalChartPage() {
   return (
     <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} transition={{ duration: 0.4 }} className="space-y-10">
       <div className="flex flex-wrap items-start justify-between gap-4">
-        <div>
-          <p className="text-xs uppercase tracking-wide text-ink-faint">Full natal chart</p>
-          <h1 className="mt-1 font-display text-4xl">Your Vedic birth chart</h1>
-          {computationBasis && <p className="mt-2 max-w-xl text-ink-muted">{computationBasis}</p>}
-        </div>
+        <PageHero
+          Icon={Compass}
+          eyebrow="Full natal chart"
+          title="Your Vedic birth chart"
+          subtitle={computationBasis || undefined}
+        />
 
         <div className="flex items-center gap-1 rounded-full border border-line-strong p-1 text-sm">
           <button

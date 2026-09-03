@@ -20,6 +20,7 @@ import TimingCard from '@/components/muhurta/TimingCard'
 import { Card } from '@/components/ui/Card'
 import { Skeleton } from '@/components/ui/Skeleton'
 import CosmicLoader from '@/components/ui/CosmicLoader'
+import { cn } from '@/lib/cn'
 import { Button } from '@/components/ui/Button'
 import NorthIndianChartSVG from '@/components/chart/NorthIndianChartSVG'
 import type { DailyReadingRow, WeeklyReportRow } from '@/types/db'
@@ -38,10 +39,10 @@ function ordinal(n: number): string {
 const SADE_SATI_LABEL = { rising: 'Rising phase', peak: 'Peak phase', setting: 'Setting phase' } as const
 
 const FOCUS_ICONS = [
-  { key: 'focus_card', label: "Today's focus", Icon: Compass },
-  { key: 'love_card', label: 'Love', Icon: Heart },
-  { key: 'career_card', label: 'Career', Icon: Briefcase },
-  { key: 'watch_card', label: 'Watch for', Icon: Eye },
+  { key: 'focus_card', label: "Today's focus", Icon: Compass, tint: 'text-accent', halo: 'bg-accent/10' },
+  { key: 'love_card', label: 'Love', Icon: Heart, tint: 'text-body', halo: 'bg-body/10' },
+  { key: 'career_card', label: 'Career', Icon: Briefcase, tint: 'text-spirit', halo: 'bg-spirit/10' },
+  { key: 'watch_card', label: 'Watch for', Icon: Eye, tint: 'text-ink-muted', halo: 'bg-ink/5' },
 ] as const
 
 export default function DashboardPage() {
@@ -162,16 +163,20 @@ export default function DashboardPage() {
   const moon = chart?.placements.find((p) => p.planet === 'Moon')
   const moonRashi = moon ? RASHIS[moon.rashiIndex] : null
   const today = new Date().toLocaleDateString('en-US', { weekday: 'long', day: 'numeric', month: 'long' })
+  const hour = new Date().getHours()
+  const greeting = hour < 12 ? 'Good morning' : hour < 17 ? 'Good afternoon' : 'Good evening'
 
   return (
     <div className="space-y-10">
       <Card className="grid gap-8 lg:grid-cols-[1fr_200px] lg:items-center">
         <div>
           <p className="text-xs uppercase tracking-wide text-ink-faint">{today}</p>
-          <h1 className="mt-2 font-display text-4xl">
-            Hi <span className="italic text-accent">{profile?.display_name}</span>, here's your
-            reading.
+          <h1 className="mt-2 font-display text-4xl leading-tight">
+            {greeting},
+            <br />
+            <span className="italic text-accent">{profile?.display_name}</span>
           </h1>
+          <p className="mt-2 text-ink-muted">Here's what the cosmos has prepared for you today.</p>
 
           {error && isMissingChartError(error) && (
             <div className="mt-4 max-w-lg rounded-xl border border-negative/30 bg-negative/5 px-4 py-3">
@@ -358,19 +363,26 @@ export default function DashboardPage() {
 
       {reading && (
         <div className="grid gap-4 sm:grid-cols-2">
-          {FOCUS_ICONS.map(({ key, label, Icon }, i) => (
+          {FOCUS_ICONS.map(({ key, label, Icon, tint, halo }, i) => (
             <motion.div
               key={key}
-              initial={{ opacity: 0, y: 8 }}
+              initial={{ opacity: 0, y: 12 }}
               animate={{ opacity: 1, y: 0 }}
-              transition={{ duration: 0.35, delay: i * 0.06 }}
+              transition={{ duration: 0.5, delay: i * 0.08, ease: [0.16, 1, 0.3, 1] }}
             >
-              <Card>
-                <div className="flex items-center gap-2 text-ink-muted">
-                  <Icon className="size-4" strokeWidth={1.75} />
-                  <span className="text-xs font-medium uppercase tracking-wide">{label}</span>
+              <Card interactive className="group h-full">
+                <div className="flex items-center gap-2.5">
+                  <span className={cn('flex size-7 items-center justify-center rounded-full', halo)}>
+                    <Icon
+                      className={cn('size-3.5 transition-transform duration-300 group-hover:scale-110', tint)}
+                      strokeWidth={1.75}
+                    />
+                  </span>
+                  <span className="text-[11px] font-semibold uppercase tracking-[0.08em] text-ink-faint">
+                    {label}
+                  </span>
                 </div>
-                <p className="mt-3 text-ink">{highlightGlossaryTerms(reading[key])}</p>
+                <p className="mt-3.5 text-ink">{highlightGlossaryTerms(reading[key])}</p>
               </Card>
             </motion.div>
           ))}

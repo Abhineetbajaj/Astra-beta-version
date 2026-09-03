@@ -2,6 +2,8 @@ import { Link } from 'react-router-dom'
 import { Star } from 'lucide-react'
 import { ASTROLOGER_PERSONAS } from '@/data/astrologerPersonas'
 import { Card } from '@/components/ui/Card'
+import PageHero from '@/components/layout/PageHero'
+import { Users } from 'lucide-react'
 import { Badge } from '@/components/ui/Badge'
 import { DisclaimerBanner } from '@/components/ui/DisclaimerBanner'
 
@@ -13,11 +15,12 @@ const PREVIEW_NOTICE =
 export default function AstrologersPage() {
   return (
     <div>
-      <p className="text-xs uppercase tracking-wide text-ink-faint">Astrologer marketplace</p>
-      <h1 className="mt-1 font-display text-4xl">Talk to a person</h1>
-      <p className="mt-2 max-w-xl text-ink-muted">
-        A preview of one-on-one consultations, billed per minute from your wallet.
-      </p>
+      <PageHero
+        Icon={Users}
+        eyebrow="Astrologer marketplace"
+        title="Talk to a person"
+        subtitle="A preview of one-on-one consultations, billed per minute from your wallet."
+      />
 
       <DisclaimerBanner text={PREVIEW_NOTICE} className="mt-6" />
 

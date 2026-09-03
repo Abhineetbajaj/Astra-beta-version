@@ -48,9 +48,9 @@
   --color-fixed-dark: #100c08;
   --color-fixed-dark-ink: #f7ecdd;
 
-  /* Subtle constellation backdrop (CosmicBackdrop.tsx) — invisible in light mode, only the dark
-     blocks below give this a nonzero value. Kept as one token so the component itself needs no
-     theme-detection logic. */
+  /* Master switch for the atmosphere layer (CosmicBackdrop.tsx): 0 hides it entirely in light
+     mode, 1 enables it in dark. Each layer inside carries its own tuned opacity, so this stays a
+     simple on/off and the component needs no theme-detection logic. */
   --cosmic-opacity: 0;
 
   --font-display: 'Newsreader', ui-serif, Georgia, serif;
@@ -75,7 +75,7 @@
   --color-positive: #8fae86;
   --color-negative: #d38571;
 
-  --cosmic-opacity: 0.11;
+  --cosmic-opacity: 1;
 
   --color-body: #ea8267;
   --color-body-strong: #f2a189;
@@ -112,7 +112,7 @@
     --color-positive: #8fae86;
     --color-negative: #d38571;
 
-    --cosmic-opacity: 0.11;
+    --cosmic-opacity: 1;
 
     --color-body: #ea8267;
     --color-body-strong: #f2a189;
@@ -231,6 +231,19 @@
   .orbit-spin { animation: astra-spin 1.6s linear infinite; }
   .orbit-spin-reverse { animation: astra-spin 3.2s linear infinite reverse; }
   .glow-breathe { animation: astra-breathe 6s ease-in-out infinite; }
+
+  /* Celestial light sources: two blurred warm masses drifting on long, mismatched cycles so the
+     background never repeats a visible pattern. Slow enough to be felt rather than watched. */
+  @keyframes astra-drift-a {
+    0%, 100% { transform: translate3d(0, 0, 0) scale(1); }
+    50% { transform: translate3d(6vw, 4vh, 0) scale(1.12); }
+  }
+  @keyframes astra-drift-b {
+    0%, 100% { transform: translate3d(0, 0, 0) scale(1.08); }
+    50% { transform: translate3d(-5vw, -6vh, 0) scale(1); }
+  }
+  .drift-a { animation: astra-drift-a 64s ease-in-out infinite; }
+  .drift-b { animation: astra-drift-b 87s ease-in-out infinite; }
 
   .skeleton-shimmer {
     background-image: linear-gradient(
