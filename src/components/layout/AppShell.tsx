@@ -4,6 +4,7 @@ import { Compass, Heart, MessageCircle, Users, Clock, Sparkles, Wallet, LogOut, 
 import { useAuthStore } from '@/store/authStore'
 import { Badge } from '@/components/ui/Badge'
 import ThemeToggle from '@/components/ui/ThemeToggle'
+import CosmicBackdrop from '@/components/layout/CosmicBackdrop'
 import { cn } from '@/lib/cn'
 
 const navItems = [
@@ -33,6 +34,7 @@ export default function AppShell() {
 
   return (
     <div className="min-h-screen bg-paper">
+      <CosmicBackdrop />
       <header className="sticky top-0 z-30 border-b border-line bg-paper/90 backdrop-blur">
         <div className="mx-auto flex max-w-6xl items-center justify-between gap-6 px-6 py-4">
           <NavLink to="/dashboard" className="font-display text-xl tracking-tight">

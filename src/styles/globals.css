@@ -45,30 +45,37 @@
   /* Theme-INVARIANT tokens for surfaces that should always look dark (e.g. the
      Auth page hero panel) — deliberately not redefined in the dark-mode blocks
      below, unlike --color-ink/--color-paper which are role tokens that swap. */
-  --color-fixed-dark: #17140f;
-  --color-fixed-dark-ink: #f2ece1;
+  --color-fixed-dark: #100c08;
+  --color-fixed-dark-ink: #f7ecdd;
+
+  /* Subtle constellation backdrop (CosmicBackdrop.tsx) — invisible in light mode, only the dark
+     blocks below give this a nonzero value. Kept as one token so the component itself needs no
+     theme-detection logic. */
+  --cosmic-opacity: 0;
 
   --font-display: 'Newsreader', ui-serif, Georgia, serif;
   --font-body: 'Manrope', ui-sans-serif, system-ui, sans-serif;
 }
 
 [data-theme='dark'] {
-  --color-paper: #17140f;
-  --color-paper-raised: #1f1b14;
-  --color-paper-sunken: #100e0a;
-  --color-ink: #f2ece1;
-  --color-ink-muted: #b6ab97;
-  --color-ink-faint: #756b5a;
-  --color-line: #322b20;
-  --color-line-strong: #453b2c;
+  --color-paper: #100c08;
+  --color-paper-raised: #1c150d;
+  --color-paper-sunken: #0a0705;
+  --color-ink: #f7ecdd;
+  --color-ink-muted: #c2a98d;
+  --color-ink-faint: #8a7c68;
+  --color-line: #3c2f1f;
+  --color-line-strong: #4f3f29;
 
-  --color-accent: #dd8158;
-  --color-accent-strong: #e89b76;
-  --color-accent-soft: #33261c;
-  --color-accent-ink: #1a1209;
+  --color-accent: #e08a4f;
+  --color-accent-strong: #ecab7c;
+  --color-accent-soft: #2e1f14;
+  --color-accent-ink: #1c0f05;
 
   --color-positive: #8fae86;
   --color-negative: #d38571;
+
+  --cosmic-opacity: 0.11;
 
   --color-body: #ea8267;
   --color-body-strong: #f2a189;
@@ -88,22 +95,24 @@
 
 @media (prefers-color-scheme: dark) {
   :root:not([data-theme='light']) {
-    --color-paper: #17140f;
-    --color-paper-raised: #1f1b14;
-    --color-paper-sunken: #100e0a;
-    --color-ink: #f2ece1;
-    --color-ink-muted: #b6ab97;
-    --color-ink-faint: #756b5a;
-    --color-line: #322b20;
-    --color-line-strong: #453b2c;
+    --color-paper: #100c08;
+    --color-paper-raised: #1c150d;
+    --color-paper-sunken: #0a0705;
+    --color-ink: #f7ecdd;
+    --color-ink-muted: #c2a98d;
+    --color-ink-faint: #8a7c68;
+    --color-line: #3c2f1f;
+    --color-line-strong: #4f3f29;
 
-    --color-accent: #dd8158;
-    --color-accent-strong: #e89b76;
-    --color-accent-soft: #33261c;
-    --color-accent-ink: #1a1209;
+    --color-accent: #e08a4f;
+    --color-accent-strong: #ecab7c;
+    --color-accent-soft: #2e1f14;
+    --color-accent-ink: #1c0f05;
 
     --color-positive: #8fae86;
     --color-negative: #d38571;
+
+    --cosmic-opacity: 0.11;
 
     --color-body: #ea8267;
     --color-body-strong: #f2a189;
