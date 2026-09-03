@@ -1,11 +1,11 @@
-// Atmosphere behind the app: two slowly drifting warm light sources, a faint film grain, and a
-// constellation motif. Every layer's visibility is driven by --cosmic-opacity (0 in light mode,
-// nonzero in dark — see globals.css), so this component needs no theme-detection logic of its own
-// and the token does all the showing and hiding. Rendered once from AppShell and from the landing
-// page, so every page inherits it for free.
+// Atmosphere behind the app: two drifting warm light sources, a fine dot-grid texture, film
+// grain, and a constellation motif. Every layer's visibility is driven by --cosmic-opacity (0 in
+// light mode, nonzero in dark — see globals.css), so this component needs no theme-detection
+// logic of its own and the token does all the showing and hiding. Rendered once from AppShell and
+// from the landing page, so every page inherits it for free.
 //
-// All three layers are fixed and pointer-events-none, so they never affect layout or interaction,
-// and the drift animations are neutralised by the global prefers-reduced-motion guard.
+// All layers are fixed and pointer-events-none, so they never affect layout or interaction, and
+// the drift animations are neutralised by the global prefers-reduced-motion guard.
 export default function CosmicBackdrop() {
   return (
     <div
@@ -13,9 +13,20 @@ export default function CosmicBackdrop() {
       className="pointer-events-none fixed inset-0 -z-10 overflow-hidden"
       style={{ opacity: 'var(--cosmic-opacity)' }}
     >
-      {/* Celestial light sources — blurred warm masses on long, mismatched cycles. */}
-      <div className="drift-a absolute -left-[10%] top-[-15%] size-[55vw] rounded-full bg-accent/20 opacity-60 blur-[120px]" />
-      <div className="drift-b absolute -right-[15%] bottom-[-20%] size-[50vw] rounded-full bg-spirit/15 opacity-50 blur-[130px]" />
+      {/* Celestial light sources — blurred warm masses on long, mismatched cycles, sized and
+          placed so they read as ambient corner glow rather than a spotlight. */}
+      <div className="drift-a absolute -left-[8%] top-[-15%] size-[60vw] rounded-full bg-accent opacity-30 blur-[110px]" />
+      <div className="drift-b absolute -right-[12%] bottom-[-18%] size-[54vw] rounded-full bg-spirit opacity-25 blur-[120px]" />
+      <div className="glow-breathe absolute left-1/2 top-[28%] size-[38vw] -translate-x-1/2 rounded-full bg-accent-strong opacity-20 blur-[100px]" />
+
+      {/* Fine dot-grid texture — felt as richness, not consciously noticed. */}
+      <div
+        className="absolute inset-0 size-full opacity-[0.12]"
+        style={{
+          backgroundImage: 'radial-gradient(circle, var(--color-ink) 1.2px, transparent 1.2px)',
+          backgroundSize: '24px 24px',
+        }}
+      />
 
       {/* Film grain. feTurbulence gives real noise without shipping an image asset. */}
       <svg className="absolute inset-0 size-full opacity-[0.035] mix-blend-overlay">
