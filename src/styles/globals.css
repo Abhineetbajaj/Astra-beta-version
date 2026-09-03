@@ -191,6 +191,15 @@
     background-color: var(--color-accent-soft);
     color: var(--color-accent-strong);
   }
+
+  @media (prefers-reduced-motion: reduce) {
+    *, *::before, *::after {
+      animation-duration: 0.001ms !important;
+      animation-iteration-count: 1 !important;
+      transition-duration: 0.001ms !important;
+      scroll-behavior: auto !important;
+    }
+  }
 }
 
 @layer utilities {
@@ -200,5 +209,18 @@
 
   .nums-tabular {
     font-variant-numeric: tabular-nums;
+  }
+
+  /* Opt-in hover treatment for the handful of cards worth calling out (main reading, feature
+     cards) — deliberately not the default on Card, since not every card should lift on hover. */
+  .card-interactive {
+    transition: transform 280ms cubic-bezier(0.16, 1, 0.3, 1), box-shadow 280ms ease, border-color 280ms ease;
+  }
+  .card-interactive:hover {
+    transform: translateY(-4px);
+    border-color: var(--color-line-strong);
+    box-shadow:
+      0 20px 48px -22px rgba(0, 0, 0, 0.4),
+      0 0 40px -16px color-mix(in srgb, var(--color-accent) 55%, transparent);
   }
 }

@@ -261,7 +261,7 @@ export default function DashboardPage() {
 
       {personalDay && personalDayMeaning && (
         <Link to="/numerology" className="block">
-          <Card className="transition-colors hover:border-line-strong">
+          <Card interactive>
             <div className="flex items-center justify-between">
               <div className="flex items-center gap-2 text-ink-muted">
                 <Hash className="size-4" strokeWidth={1.75} />

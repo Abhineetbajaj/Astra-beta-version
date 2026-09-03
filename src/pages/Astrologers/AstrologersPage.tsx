@@ -24,7 +24,7 @@ export default function AstrologersPage() {
       <div className="mt-8 grid gap-4 sm:grid-cols-2">
         {ASTROLOGER_PERSONAS.map((a) => (
           <Link key={a.id} to={`/astrologers/${a.id}`}>
-            <Card className="h-full transition-colors hover:border-line-strong">
+            <Card interactive className="h-full">
               <div className="flex items-start justify-between">
                 <div>
                   <h2 className="font-display text-lg">{a.name}</h2>

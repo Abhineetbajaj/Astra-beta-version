@@ -49,14 +49,18 @@ export default function AppShell() {
                 end={end}
                 className={({ isActive }) =>
                   cn(
-                    'flex items-center gap-2 rounded-full px-3.5 py-2 text-sm font-medium transition-colors',
+                    'group flex items-center gap-2 rounded-full px-3.5 py-2 text-sm font-medium',
+                    'transition-[background-color,color,box-shadow] duration-200 ease-out',
                     isActive
-                      ? 'bg-paper-raised text-ink'
-                      : 'text-ink-muted hover:text-ink hover:bg-paper-raised',
+                      ? 'bg-paper-raised text-ink ring-1 ring-accent/25 shadow-[0_0_22px_-8px_color-mix(in_srgb,var(--color-accent)_55%,transparent)]'
+                      : 'text-ink-muted hover:text-ink hover:bg-paper-raised/70',
                   )
                 }
               >
-                <Icon className="size-4" strokeWidth={1.75} />
+                <Icon
+                  className="size-4 transition-transform duration-200 ease-out group-hover:scale-110"
+                  strokeWidth={1.75}
+                />
                 {label}
               </NavLink>
             ))}
@@ -103,8 +107,10 @@ export default function AppShell() {
                 end={end}
                 className={({ isActive }) =>
                   cn(
-                    'flex shrink-0 items-center gap-1.5 rounded-full px-3 py-1.5 text-xs font-medium',
-                    isActive ? 'bg-paper-raised text-ink' : 'text-ink-muted',
+                    'flex shrink-0 items-center gap-1.5 rounded-full px-3 py-1.5 text-xs font-medium transition-colors',
+                    isActive
+                      ? 'bg-paper-raised text-ink ring-1 ring-accent/25'
+                      : 'text-ink-muted',
                   )
                 }
               >
