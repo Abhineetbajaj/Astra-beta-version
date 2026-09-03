@@ -559,6 +559,21 @@ Everything else is live and verified, not just written.
 
 ## Conventions
 
+- **Visual identity — check every new UI surface against this before writing it, don't re-derive
+  the vibe per page:**
+  ```
+  Warm copper-on-near-black (dark: #100c08 bg / #e08a4f accent; light: #faf7f1 / #b5502f — see
+  src/styles/globals.css --color-* tokens), never purple, blue, or neon.
+  Newsreader (serif) for headings, Manrope (sans) for everything else — high contrast between the
+  two is the point; don't default to one safe sans everywhere.
+  Circles and orbit rings as the recurring motif (NumberOrb, CosmicBackdrop's constellation),
+  not boxes or bars.
+  Motion is slow and felt, not seen — a 150s wheel turn, not a spinner. Reserve fast/obvious
+  motion for genuine feedback (button press, card hover), never for ambient decoration.
+  ```
+  Adapted from Anthropic's own `prompting_for_frontend_aesthetics` cookbook's "theme constraint"
+  pattern — the point of writing it down is that a fresh session (or a fresh page) checks against
+  these four lines instead of improvising a compatible-but-slightly-off aesthetic each time.
 - Edge functions: one per concern, thin `Deno.serve` wrapper delegating to `_shared/` helpers.
   Always `requireUser(req)` first, `requirePremium()` where relevant, then do the work.
 - Never construct Gemini prompts inline without going through `factsGroundingPreamble()`. Every
