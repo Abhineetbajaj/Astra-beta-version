@@ -22,6 +22,7 @@ import { Button } from '@/components/ui/Button'
 import { Input } from '@/components/ui/Input'
 import { Badge } from '@/components/ui/Badge'
 import { Skeleton } from '@/components/ui/Skeleton'
+import CosmicLoader from '@/components/ui/CosmicLoader'
 import { cn } from '@/lib/cn'
 import type { NumerologyCompatibilityReadingRow, NumerologyDailyReadingRow, NumerologyReadingRow } from '@/types/db'
 
@@ -458,7 +459,12 @@ export default function NumerologyPage() {
             </button>
           </div>
         )}
-        {(generating || loadingExisting) && !reading && (
+        {generating && !reading && (
+          <div className="mt-5 border-t border-line pt-5">
+            <CosmicLoader label="Reading your numbers…" />
+          </div>
+        )}
+        {loadingExisting && !generating && !reading && (
           <div className="mt-5 space-y-2 border-t border-line pt-5">
             <Skeleton className="h-4 w-full" />
             <Skeleton className="h-4 w-11/12" />

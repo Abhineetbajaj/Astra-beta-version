@@ -19,6 +19,7 @@ import { shareCardImage } from '@/lib/shareCardImage'
 import TimingCard from '@/components/muhurta/TimingCard'
 import { Card } from '@/components/ui/Card'
 import { Skeleton } from '@/components/ui/Skeleton'
+import CosmicLoader from '@/components/ui/CosmicLoader'
 import { Button } from '@/components/ui/Button'
 import NorthIndianChartSVG from '@/components/chart/NorthIndianChartSVG'
 import type { DailyReadingRow, WeeklyReportRow } from '@/types/db'
@@ -181,9 +182,13 @@ export default function DashboardPage() {
                   onboarding was interrupted.
                 </p>
               </div>
-              <Button variant="outline" size="sm" className="mt-3" onClick={handleComputeChart} disabled={computingChart}>
-                {computingChart ? 'Computing your chart…' : 'Compute my chart'}
-              </Button>
+              {computingChart ? (
+                <CosmicLoader label="Computing your chart…" className="items-start py-6" />
+              ) : (
+                <Button variant="outline" size="sm" className="mt-3" onClick={handleComputeChart}>
+                  Compute my chart
+                </Button>
+              )}
             </div>
           )}
           {error && !isMissingChartError(error) && <p className="mt-4 text-sm text-negative">{error}</p>}

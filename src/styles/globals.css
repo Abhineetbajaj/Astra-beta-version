@@ -211,6 +211,37 @@
     font-variant-numeric: tabular-nums;
   }
 
+  /* Motion primitives. All of these are neutralised by the prefers-reduced-motion guard above. */
+  @keyframes astra-spin {
+    to { transform: rotate(360deg); }
+  }
+  @keyframes astra-shimmer {
+    0% { background-position: -200% 0; }
+    100% { background-position: 200% 0; }
+  }
+  @keyframes astra-breathe {
+    0%, 100% { opacity: 0.45; transform: scale(1); }
+    50% { opacity: 0.75; transform: scale(1.04); }
+  }
+
+  /* Very slow ambient rotation for the hero zodiac wheel — a full turn takes over two minutes,
+     so it reads as "alive" rather than as a spinner. */
+  .orbit-ambient { animation: astra-spin 150s linear infinite; }
+  .orbit-spin { animation: astra-spin 1.6s linear infinite; }
+  .orbit-spin-reverse { animation: astra-spin 3.2s linear infinite reverse; }
+  .glow-breathe { animation: astra-breathe 6s ease-in-out infinite; }
+
+  .skeleton-shimmer {
+    background-image: linear-gradient(
+      90deg,
+      transparent 0%,
+      color-mix(in srgb, var(--color-ink) 9%, transparent) 50%,
+      transparent 100%
+    );
+    background-size: 200% 100%;
+    animation: astra-shimmer 1.9s ease-in-out infinite;
+  }
+
   /* Opt-in hover treatment for the handful of cards worth calling out (main reading, feature
      cards) — deliberately not the default on Card, since not every card should lift on hover. */
   .card-interactive {
