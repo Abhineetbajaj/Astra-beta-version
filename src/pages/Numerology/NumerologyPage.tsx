@@ -17,6 +17,8 @@ import GlossaryTerm from '@/components/GlossaryTerm'
 import ShareCard from '@/components/share/ShareCard'
 import { shareCardImage } from '@/lib/shareCardImage'
 import LoShuGridDisplay from '@/components/numerology/LoShuGridDisplay'
+import NumberOrb from '@/components/numerology/NumberOrb'
+import Reveal from '@/components/motion/Reveal'
 import { Card } from '@/components/ui/Card'
 import { Button } from '@/components/ui/Button'
 import { Input } from '@/components/ui/Input'
@@ -229,7 +231,15 @@ export default function NumerologyPage() {
 
   return (
     <div className="mx-auto max-w-2xl space-y-10">
-      <div className="text-center">
+      <div className="relative text-center">
+        {/* The reader's own Life Path number, huge and barely there — atmosphere that is
+            specific to them rather than generic decoration. */}
+        <span
+          aria-hidden="true"
+          className="nums-tabular pointer-events-none absolute -top-10 left-1/2 -z-10 -translate-x-1/2 select-none font-display text-[13rem] leading-none text-ink opacity-[0.045]"
+        >
+          {coreNumbers.lifePath.value}
+        </span>
         <Hash className="mx-auto size-6 text-accent" strokeWidth={1.5} />
         <h1 className="mt-3 font-display text-4xl">Numerology</h1>
         <p className="mt-2 text-ink-muted">
@@ -289,8 +299,12 @@ export default function NumerologyPage() {
             Today's <GlossaryTerm term="personal day">Personal Day</GlossaryTerm>
           </span>
         </div>
-        <div className="mt-3">
-          <NumberBadge result={personalCycles.personalDay} />
+        <div className="mt-4 flex justify-center">
+          <NumberOrb
+            value={personalCycles.personalDay.value}
+            isMaster={personalCycles.personalDay.isMaster}
+            size="lg"
+          />
         </div>
         {loadingDaily && (
           <div className="mt-4 space-y-2">
@@ -325,21 +339,21 @@ export default function NumerologyPage() {
         <p className="mt-1 text-sm text-ink-muted">
           {NUMEROLOGY_SYSTEMS.find((s) => s.id === system)?.label} system.
         </p>
-        <div className="mt-5 overflow-x-auto">
-          <table className="w-full min-w-[360px] text-sm">
-            <tbody className="divide-y divide-line">
-              {CORE_NUMBER_ROWS.map(({ key, label, glossaryTerm }) => (
-                <tr key={key}>
-                  <td className="py-3 pr-4 text-ink-muted">
+        <div className="mt-6 grid grid-cols-2 gap-4 sm:grid-cols-3">
+          {CORE_NUMBER_ROWS.map(({ key, label, glossaryTerm }, i) => {
+            const result = coreNumbers[key] as NumberResult
+            return (
+              <Reveal key={key} delay={i * 0.07}>
+                <div className="card-interactive flex h-full flex-col items-center rounded-2xl border border-line bg-gradient-to-br from-white/[0.03] to-transparent px-3 py-5 text-center">
+                  <p className="text-[10px] font-semibold uppercase tracking-[0.08em] text-ink-faint">
                     <GlossaryTerm term={glossaryTerm}>{label}</GlossaryTerm>
-                  </td>
-                  <td className="py-3">
-                    <NumberBadge result={coreNumbers[key] as NumberResult} />
-                  </td>
-                </tr>
-              ))}
-            </tbody>
-          </table>
+                  </p>
+                  <NumberOrb value={result.value} isMaster={result.isMaster} className="mt-3" />
+                  <p className="mt-4 text-xs text-ink-muted">{meaningForNumber(result.value).title}</p>
+                </div>
+              </Reveal>
+            )
+          })}
         </div>
 
         {chaldeanExtra && (

@@ -227,6 +227,7 @@
   /* Very slow ambient rotation for the hero zodiac wheel — a full turn takes over two minutes,
      so it reads as "alive" rather than as a spinner. */
   .orbit-ambient { animation: astra-spin 150s linear infinite; }
+  .orbit-medium { animation: astra-spin 26s linear infinite; }
   .orbit-spin { animation: astra-spin 1.6s linear infinite; }
   .orbit-spin-reverse { animation: astra-spin 3.2s linear infinite reverse; }
   .glow-breathe { animation: astra-breathe 6s ease-in-out infinite; }
