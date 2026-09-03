@@ -3,6 +3,12 @@
 // before — see the package.json build script ordering. No React, no headless browser: the data is
 // timeless and the whole point is real HTML on disk before any JavaScript runs, since GPTBot/
 // ClaudeBot/PerplexityBot/OAI-SearchBot don't execute JavaScript at all.
+//
+// All /learn/* public URLs use a trailing slash (canonical tags, sitemap <loc>, internal links,
+// JSON-LD). Confirmed via a live post-deploy curl check that Render's dashboard SPA rewrite only
+// skips real-file matching for the exact on-disk path a trailing-slash URL maps to
+// (.../learn/x/index.html) — the no-slash form falls through to the SPA shell on every single
+// page type, consistently. Existing app routes (/, /auth, /pricing) are untouched.
 import fs from 'node:fs'
 import path from 'node:path'
 import { fileURLToPath } from 'node:url'
@@ -60,6 +66,13 @@ const STATIC_URLS = [
   { loc: '/pricing', changefreq: 'monthly', priority: '0.6' },
   { loc: '/auth', changefreq: 'monthly', priority: '0.3' },
 ]
+
+// The only place that knows the trailing-slash convention for generated /learn/* URLs — every
+// href/canonical/sitemap-loc pointing at a page this script writes routes through here, so the
+// convention can't drift out of sync across the ~20 call sites that need it.
+function learnHref(p) {
+  return p.endsWith('/') ? p : `${p}/`
+}
 
 function escapeHtml(input) {
   return String(input)
@@ -127,7 +140,7 @@ function buildCategoryIndex() {
 
 function breadcrumbHtml(trail) {
   const parts = trail.map((t, i) =>
-    i === trail.length - 1 ? `<span>${escapeHtml(t.label)}</span>` : `<a href="${t.href}">${escapeHtml(t.label)}</a>`,
+    i === trail.length - 1 ? `<span>${escapeHtml(t.label)}</span>` : `<a href="${learnHref(t.href)}">${escapeHtml(t.label)}</a>`,
   )
   return `<nav class="breadcrumb">${parts.join(' <span aria-hidden="true">/</span> ')}</nav>`
 }
@@ -182,7 +195,7 @@ li{margin:0 0 6px;}
 `
 
 function pageShell({ title, description, canonicalPath, breadcrumb, bodyHtml, jsonLd = [] }) {
-  const canonicalUrl = `${SITE_URL}${canonicalPath}`
+  const canonicalUrl = `${SITE_URL}${learnHref(canonicalPath)}`
   const jsonLdHtml = jsonLd.map((obj) => `<script type="application/ld+json">${toSafeJsonLd(obj)}</script>`).join('\n    ')
   return `<!doctype html>
 <html lang="en">
@@ -217,7 +230,7 @@ function pageShell({ title, description, canonicalPath, breadcrumb, bodyHtml, js
     <header class="site-header">
       <a class="wordmark" href="/">Astra</a>
       <nav class="site-nav">
-        <a href="/learn">Learn</a>
+        <a href="${learnHref('/learn')}">Learn</a>
         <a class="cta" href="/auth">Open Astra</a>
       </nav>
     </header>
@@ -227,7 +240,7 @@ function pageShell({ title, description, canonicalPath, breadcrumb, bodyHtml, js
     </main>
     <footer class="site-footer">
       <p>&copy; ${new Date().getFullYear()} Astra — <a href="/">astraastroconsultancy.com</a></p>
-      <p><a href="/learn">Learn</a> &middot; <a href="/pricing">Pricing</a> &middot; <a href="/auth">Sign in</a></p>
+      <p><a href="${learnHref('/learn')}">Learn</a> &middot; <a href="/pricing">Pricing</a> &middot; <a href="/auth">Sign in</a></p>
     </footer>
   </body>
 </html>
@@ -242,18 +255,19 @@ function renderNumerologyPage(meaning, order) {
     ({ label, glossaryTerm }) => `
     <div class="subtype-row">
       <h3>${escapeHtml(label)} ${number}</h3>
-      <p>${escapeHtml(GLOSSARY[glossaryTerm])} <a href="/learn/glossary/${slugify(glossaryTerm)}">More on the ${escapeHtml(label)} number &rarr;</a></p>
+      <p>${escapeHtml(GLOSSARY[glossaryTerm])} <a href="${learnHref(`/learn/glossary/${slugify(glossaryTerm)}`)}">More on the ${escapeHtml(label)} number &rarr;</a></p>
     </div>`,
   ).join('')
 
-  const linkNumbers = (nums) => (nums.length ? nums.map((n) => `<a href="/learn/numerology/${n}">${n}</a>`).join(', ') : 'None flagged')
+  const linkNumbers = (nums) =>
+    nums.length ? nums.map((n) => `<a href="${learnHref(`/learn/numerology/${n}`)}">${n}</a>`).join(', ') : 'None flagged'
 
   const masterBlock = isMaster
-    ? `<p class="lede">${escapeHtml(GLOSSARY['master number'])} <a href="/learn/glossary/master-number">More on master numbers &rarr;</a></p>`
+    ? `<p class="lede">${escapeHtml(GLOSSARY['master number'])} <a href="${learnHref('/learn/glossary/master-number')}">More on master numbers &rarr;</a></p>`
     : ''
 
   const navHtml = order
-    .map((n) => `<a class="${n === number ? 'current' : ''}" href="/learn/numerology/${n}">${n}</a>`)
+    .map((n) => `<a class="${n === number ? 'current' : ''}" href="${learnHref(`/learn/numerology/${n}`)}">${n}</a>`)
     .join('')
 
   const bodyHtml = `
@@ -324,7 +338,9 @@ function renderNumerologyPage(meaning, order) {
 function renderGlossaryPage(key, definition, category) {
   const displayName = titleCaseTerm(key)
   const relatedHtml =
-    category.name === 'Numerology' ? `<p><a href="/learn/numerology">Explore what each number means &rarr;</a></p>` : ''
+    category.name === 'Numerology'
+      ? `<p><a href="${learnHref('/learn/numerology')}">Explore what each number means &rarr;</a></p>`
+      : ''
 
   const bodyHtml = `
     <span class="badge">${escapeHtml(category.name)}</span>
@@ -336,7 +352,7 @@ function renderGlossaryPage(key, definition, category) {
       <p>See this and everything else in your real Vedic birth chart — computed from your exact birth date, time, and place.</p>
       <a class="button" href="/auth">Open your chart free</a>
     </div>
-    <p><a href="/learn/glossary">&larr; Back to the full glossary</a></p>
+    <p><a href="${learnHref('/learn/glossary')}">&larr; Back to the full glossary</a></p>
   `
 
   const jsonLd = {
@@ -347,7 +363,7 @@ function renderGlossaryPage(key, definition, category) {
     inDefinedTermSet: {
       '@type': 'DefinedTermSet',
       name: 'Astra Vedic Astrology & Numerology Glossary',
-      url: `${SITE_URL}/learn/glossary`,
+      url: `${SITE_URL}${learnHref('/learn/glossary')}`,
     },
   }
 
@@ -369,12 +385,12 @@ function renderLearnHub() {
       <div class="card">
         <h2 style="margin-top:0">Numerology meanings</h2>
         <p>What each number means — 1 through 9, plus the master numbers 11, 22, and 33.</p>
-        <p><a href="/learn/numerology">Browse all 12 numbers &rarr;</a></p>
+        <p><a href="${learnHref('/learn/numerology')}">Browse all 12 numbers &rarr;</a></p>
       </div>
       <div class="card">
         <h2 style="margin-top:0">Astrology glossary</h2>
         <p>Planets, signs, houses, dignities, and dasha/timing terms used across your chart.</p>
-        <p><a href="/learn/glossary">Browse all ${Object.keys(GLOSSARY).length} terms &rarr;</a></p>
+        <p><a href="${learnHref('/learn/glossary')}">Browse all ${Object.keys(GLOSSARY).length} terms &rarr;</a></p>
       </div>
     </div>
     <div class="cta-panel">
@@ -396,7 +412,7 @@ function renderNumerologyIndex(order) {
   const items = order
     .map((n) => {
       const m = NUMEROLOGY_MEANINGS[n]
-      return `<a href="/learn/numerology/${n}"><strong>${n}</strong> — ${escapeHtml(m.title)}</a>`
+      return `<a href="${learnHref(`/learn/numerology/${n}`)}"><strong>${n}</strong> — ${escapeHtml(m.title)}</a>`
     })
     .join('')
   const bodyHtml = `
@@ -415,7 +431,9 @@ function renderNumerologyIndex(order) {
 
 function renderGlossaryIndex() {
   const sections = GLOSSARY_CATEGORIES.map((cat) => {
-    const items = cat.keys.map((k) => `<a href="/learn/glossary/${slugify(k)}">${escapeHtml(titleCaseTerm(k))}</a>`).join('')
+    const items = cat.keys
+      .map((k) => `<a href="${learnHref(`/learn/glossary/${slugify(k)}`)}">${escapeHtml(titleCaseTerm(k))}</a>`)
+      .join('')
     return `<h2>${escapeHtml(cat.name)}</h2><div class="term-list">${items}</div>`
   }).join('')
   const bodyHtml = `
@@ -456,28 +474,28 @@ function main() {
   const sitemapUrls = [...STATIC_URLS]
 
   writePage('/learn', renderLearnHub())
-  sitemapUrls.push({ loc: '/learn', changefreq: 'monthly', priority: '0.7' })
+  sitemapUrls.push({ loc: learnHref('/learn'), changefreq: 'monthly', priority: '0.7' })
 
   const numerologyOrder = Object.keys(NUMEROLOGY_MEANINGS)
     .map(Number)
     .sort((a, b) => a - b)
 
   writePage('/learn/numerology', renderNumerologyIndex(numerologyOrder))
-  sitemapUrls.push({ loc: '/learn/numerology', changefreq: 'monthly', priority: '0.6' })
+  sitemapUrls.push({ loc: learnHref('/learn/numerology'), changefreq: 'monthly', priority: '0.6' })
 
   for (const n of numerologyOrder) {
     writePage(`/learn/numerology/${n}`, renderNumerologyPage(NUMEROLOGY_MEANINGS[n], numerologyOrder))
-    sitemapUrls.push({ loc: `/learn/numerology/${n}`, changefreq: 'yearly', priority: '0.5' })
+    sitemapUrls.push({ loc: learnHref(`/learn/numerology/${n}`), changefreq: 'yearly', priority: '0.5' })
   }
 
   writePage('/learn/glossary', renderGlossaryIndex())
-  sitemapUrls.push({ loc: '/learn/glossary', changefreq: 'monthly', priority: '0.6' })
+  sitemapUrls.push({ loc: learnHref('/learn/glossary'), changefreq: 'monthly', priority: '0.6' })
 
   for (const [key, definition] of Object.entries(GLOSSARY)) {
     const slug = slugify(key)
     const category = keyToCategory.get(key)
     writePage(`/learn/glossary/${slug}`, renderGlossaryPage(key, definition, category))
-    sitemapUrls.push({ loc: `/learn/glossary/${slug}`, changefreq: 'yearly', priority: '0.4' })
+    sitemapUrls.push({ loc: learnHref(`/learn/glossary/${slug}`), changefreq: 'yearly', priority: '0.4' })
   }
 
   fs.writeFileSync(path.join(DIST, 'sitemap.xml'), buildSitemapXml(sitemapUrls), 'utf8')
