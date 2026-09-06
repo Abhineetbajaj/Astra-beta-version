@@ -23,8 +23,10 @@ import CosmicLoader from '@/components/ui/CosmicLoader'
 import { cn } from '@/lib/cn'
 import { Button } from '@/components/ui/Button'
 import NorthIndianChartSVG from '@/components/chart/NorthIndianChartSVG'
+import ChartAtmosphere from '@/components/chart/ChartAtmosphere'
 import NumberOrb from '@/components/numerology/NumberOrb'
 import Reveal from '@/components/motion/Reveal'
+import TiltCard from '@/components/motion/TiltCard'
 import type { DailyReadingRow, WeeklyReportRow } from '@/types/db'
 
 /** compute-chart failed at some point after the birth profile was saved (see loadChartFacts.ts). */
@@ -256,24 +258,36 @@ export default function DashboardPage() {
 
         {/* Right column intentionally ~40% of the card, not a narrow afterthought — the chart
             gets its own tinted panel and a caption so it reads as part of the reading, not a
-            disconnected decoration next to it. */}
-        <div className="flex flex-col items-center justify-center gap-3 rounded-2xl border border-line-strong bg-paper-raised/40 p-6">
+            disconnected decoration next to it. relative + overflow-hidden so the celestial
+            atmosphere layer clips to these rounded corners instead of spilling past them. */}
+        <div className="relative flex flex-col items-center justify-center gap-3 overflow-hidden rounded-2xl border border-line-strong bg-paper-raised/40 p-6 shadow-[0_18px_44px_-28px_rgba(0,0,0,0.55)]">
           {chart ? (
             <>
-              <motion.div
-                className="glow-breathe relative"
-                initial={{ opacity: 0, scale: 0.92 }}
-                animate={{ opacity: 1, scale: 1 }}
-                transition={{ duration: 0.5 }}
-              >
-                <NorthIndianChartSVG
-                  placements={chart.placements}
-                  housesReliable={chart.housesReliable}
-                  activeDashaLord={active?.maha}
-                  size={200}
-                />
-              </motion.div>
-              <p className="text-center text-xs text-ink-faint">Your current cosmic map</p>
+              <ChartAtmosphere />
+              {/* A separate glow BEHIND the chart, not applied to the chart itself — the chart is
+                  the one thing on this page that must stay fully readable at all times, so only
+                  this decorative element pulses, never the actual astrology data. (Previously
+                  glow-breathe was applied directly to the chart's own wrapper, which meant the
+                  real chart was continuously fading between 45-75% opacity — fixed here.) */}
+              <div
+                aria-hidden="true"
+                className="glow-breathe pointer-events-none absolute inset-0 m-auto size-[160px] rounded-full bg-accent/20 blur-[50px]"
+              />
+              <TiltCard maxTilt={4}>
+                <motion.div
+                  initial={{ opacity: 0, scale: 0.92 }}
+                  animate={{ opacity: 1, scale: 1 }}
+                  transition={{ duration: 0.6, ease: [0.16, 1, 0.3, 1] }}
+                >
+                  <NorthIndianChartSVG
+                    placements={chart.placements}
+                    housesReliable={chart.housesReliable}
+                    activeDashaLord={active?.maha}
+                    size={200}
+                  />
+                </motion.div>
+              </TiltCard>
+              <p className="relative text-center text-xs text-ink-faint">Your current cosmic map</p>
             </>
           ) : (
             <div className="flex h-[200px] items-center justify-center text-xs text-ink-faint">
