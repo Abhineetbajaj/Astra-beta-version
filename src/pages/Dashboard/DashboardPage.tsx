@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
+import { Fragment, useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import { Link } from 'react-router-dom'
 import { motion } from 'framer-motion'
 import { Compass, Heart, Briefcase, Eye, Sparkles, Lock, AlertCircle, Orbit, ThumbsUp, ThumbsDown, Hash, Share2 } from 'lucide-react'
@@ -25,6 +25,7 @@ import { Button } from '@/components/ui/Button'
 import NorthIndianChartSVG from '@/components/chart/NorthIndianChartSVG'
 import ChartAtmosphere from '@/components/chart/ChartAtmosphere'
 import NumberOrb from '@/components/numerology/NumberOrb'
+import MoonPhaseGlyph from '@/components/dashboard/MoonPhaseGlyph'
 import Reveal from '@/components/motion/Reveal'
 import TiltCard from '@/components/motion/TiltCard'
 import type { DailyReadingRow, WeeklyReportRow } from '@/types/db'
@@ -207,9 +208,19 @@ export default function DashboardPage() {
           {error && !isMissingChartError(error) && <p className="mt-4 text-sm text-negative">{error}</p>}
 
           {(reading || loadingReading) && (
-            <p className="mt-7 text-[11px] font-semibold uppercase tracking-[0.08em] text-ink-faint">
-              Today's cosmic overview
-            </p>
+            <div className="mt-7 flex items-center gap-2">
+              {/* Driven by the real Tithi index already computed below for the panchang grid —
+                  not a decorative crescent, the actual lunar phase for today. */}
+              <MoonPhaseGlyph tithiIndex={panchang.tithi.index} />
+              <div>
+                <p className="text-[11px] font-semibold uppercase tracking-[0.08em] text-ink-faint">
+                  Today's cosmic overview
+                </p>
+                <p className="text-[11px] text-ink-faint">
+                  {panchang.tithi.name} · {panchang.tithi.paksha === 'Shukla' ? 'waxing' : 'waning'} moon
+                </p>
+              </div>
+            </div>
           )}
           {loadingReading && !reading && (
             <div className="mt-3 space-y-2">
@@ -540,29 +551,43 @@ export default function DashboardPage() {
                 section labels invented here: there's no distinct "theme" vs "influences" field
                 in the data, just four paragraphs, so only real structure (first vs. rest) is used. */}
             <div className="max-w-2xl space-y-4">
-              {weeklyReport.body.split('\n').filter(Boolean).map((paragraph, i) =>
-                i === 0 ? (
-                  <p key={i} className="font-display text-lg leading-snug text-ink">
+              {weeklyReport.body.split('\n').filter(Boolean).map((paragraph, i) => (
+                <Fragment key={i}>
+                  <p
+                    className={
+                      i === 0 ? 'font-display text-lg leading-snug text-ink' : 'text-[15px] leading-relaxed text-ink-muted'
+                    }
+                  >
                     {highlightGlossaryTerms(paragraph)}
                   </p>
-                ) : (
-                  <p key={i} className="text-[15px] leading-relaxed text-ink-muted">
-                    {highlightGlossaryTerms(paragraph)}
-                  </p>
-                ),
-              )}
+                  {/* A real pull-quote, not decoration for its own sake: the week's first
+                      highlight, already-generated real data, given the visual weight of an
+                      editorial callout instead of only appearing lower in a bulleted list. */}
+                  {i === 1 && weeklyReport.highlights[0] && (
+                    <p className="my-2 border-l-2 border-accent/40 pl-4 font-display text-xl italic leading-snug text-ink">
+                      <span aria-hidden="true" className="mr-0.5 text-accent">
+                        "
+                      </span>
+                      {weeklyReport.highlights[0]}
+                      <span aria-hidden="true" className="text-accent">
+                        "
+                      </span>
+                    </p>
+                  )}
+                </Fragment>
+              ))}
             </div>
 
-            {(weeklyReport.highlights.length > 0 || weeklyReport.watch_outs.length > 0) && (
+            {(weeklyReport.highlights.length > 1 || weeklyReport.watch_outs.length > 0) && (
               <div className="mt-6 grid gap-5 border-t border-line pt-5 sm:grid-cols-2">
-                {weeklyReport.highlights.length > 0 && (
+                {weeklyReport.highlights.length > 1 && (
                   <div>
                     <div className="flex items-center gap-2 text-positive">
                       <ThumbsUp className="size-4" strokeWidth={1.75} />
                       <span className="text-xs font-semibold uppercase tracking-[0.08em]">Good for you this week</span>
                     </div>
                     <ul className="mt-3 space-y-2">
-                      {weeklyReport.highlights.map((item, i) => (
+                      {weeklyReport.highlights.slice(1).map((item, i) => (
                         <li key={i} className="flex gap-2 text-sm text-ink">
                           <span className="mt-2 size-1 shrink-0 rounded-full bg-positive" aria-hidden="true" />
                           {item}
