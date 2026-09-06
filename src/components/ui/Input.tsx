@@ -12,7 +12,7 @@ const Input = forwardRef<HTMLInputElement, InputProps>(({ className, error, ...p
       ref={ref}
       className={cn(
         'h-11 w-full rounded-xl border bg-paper px-3.5 text-sm text-ink placeholder:text-ink-faint',
-        'transition-colors focus:outline-none focus:ring-2 focus:ring-accent/40',
+        'transition-colors focus:outline-none focus-visible:ring-2 focus-visible:ring-accent/40',
         'disabled:cursor-not-allowed disabled:opacity-60',
         error ? 'border-negative' : 'border-line-strong focus:border-accent',
         className,
