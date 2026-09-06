@@ -498,18 +498,32 @@ export default function NumerologyPage() {
               </div>
 
               <div className="mt-5 max-w-2xl border-t border-line pt-5">
-                <div className="grid gap-6 sm:grid-cols-2">
+                {/* Strengths and Growth Edge are given genuinely different list treatments rather
+                    than two identical plain columns: Strengths reads as a curated, numbered
+                    editorial list (quick to scan, quietly confident); Growth Edge sits behind a
+                    single quiet vertical guide with more open spacing, reading as a reflective
+                    aside rather than a mirrored second list. The 3:2 column split matches the
+                    real, consistent shape of this data (every entry in numerologyMeanings.ts has
+                    more positiveTraits than shadowTraits) rather than an arbitrary ratio, and the
+                    guide line doubles as the fix for the empty space a shorter Growth Edge column
+                    used to leave — a real compositional element, not a stretch or filler. */}
+                <div className="grid gap-6 sm:grid-cols-[3fr_2fr]">
                   <div>
                     <p className="text-xs font-medium uppercase tracking-wide text-positive">Strengths</p>
-                    <ul className="mt-2.5 space-y-1.5 text-sm leading-relaxed text-ink">
-                      {meaning.positiveTraits.map((t) => (
-                        <li key={t}>{t}</li>
+                    <ul className="mt-3 space-y-2 text-sm leading-relaxed text-ink">
+                      {meaning.positiveTraits.map((t, i) => (
+                        <li key={t} className="flex items-baseline gap-3">
+                          <span className="nums-tabular w-4 shrink-0 text-xs text-accent/60">
+                            {String(i + 1).padStart(2, '0')}
+                          </span>
+                          <span>{t}</span>
+                        </li>
                       ))}
                     </ul>
                   </div>
-                  <div>
+                  <div className="border-t border-line pt-5 sm:border-t-0 sm:border-l sm:pl-6 sm:pt-0">
                     <p className="text-xs font-medium uppercase tracking-wide text-ink-faint">Growth edge</p>
-                    <ul className="mt-2.5 space-y-1.5 text-sm leading-relaxed text-ink-muted">
+                    <ul className="mt-3 space-y-3 text-sm leading-relaxed text-ink-muted">
                       {meaning.shadowTraits.map((t) => (
                         <li key={t}>{t}</li>
                       ))}
