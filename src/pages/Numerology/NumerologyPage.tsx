@@ -36,6 +36,14 @@ const CORE_NUMBER_ROWS: { key: keyof CoreNumbers; label: string; glossaryTerm: s
   { key: 'birthday', label: 'Birthday', glossaryTerm: 'birthday number' },
 ]
 
+// Life Path gets the primary/hero treatment in "Your core numbers" — not an arbitrary pick, it's
+// the one number this page already treats as the reader's defining number (see the giant faint
+// watermark numeral behind the page's own H1 below), and it's one of only three numbers real
+// enough to numerology matching to appear in the compatibility engine's own dimension list
+// (src/numerology-engine/compatibility.ts), alongside Expression and Soul Urge. Personality and
+// Birthday are real, unhidden, but genuinely more supporting per that same existing structure.
+const [PRIMARY_NUMBER_ROW, ...SECONDARY_NUMBER_ROWS] = CORE_NUMBER_ROWS
+
 function NumberBadge({ result }: { result: NumberResult }) {
   return (
     <span className="flex items-center gap-2">
@@ -229,6 +237,8 @@ export default function NumerologyPage() {
 
   if (!selfBirthProfile || !coreNumbers || !personalCycles) return null
 
+  const todayLabel = new Date().toLocaleDateString('en-US', { weekday: 'long', day: 'numeric', month: 'long' })
+
   return (
     <div className="mx-auto max-w-2xl space-y-10">
       <div className="relative text-center">
@@ -281,52 +291,81 @@ export default function NumerologyPage() {
             key={s.id}
             type="button"
             title={s.blurb}
+            aria-pressed={system === s.id}
             onClick={() => setSystem(s.id)}
             className={cn(
-              'flex-1 rounded-full px-4 py-2 text-sm font-medium transition-colors',
-              system === s.id ? 'bg-paper text-ink shadow-sm' : 'text-ink-muted hover:text-ink',
+              'relative flex-1 rounded-full px-4 py-2 text-sm font-medium transition-colors',
+              'focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-accent/50 focus-visible:ring-offset-2 focus-visible:ring-offset-paper',
+              system === s.id ? 'text-ink' : 'text-ink-muted hover:text-ink',
             )}
           >
+            {/* Same shared-layout sliding-pill technique as AppShell's nav (layoutId), kept in
+                this control's own quieter skin (flat bg-paper lift, no accent ring/glow) rather
+                than borrowing the nav's glow treatment — this is a secondary toggle, not primary
+                navigation. */}
+            {system === s.id && (
+              <motion.span
+                layoutId="numerology-system-pill"
+                className="absolute inset-0 -z-10 rounded-full bg-paper shadow-sm"
+                transition={{ type: 'spring', stiffness: 420, damping: 34 }}
+              />
+            )}
             {s.label}
           </button>
         ))}
       </div>
 
       <Card>
-        <div className="flex items-center gap-2 text-ink-muted">
-          <Sparkles className="size-4" strokeWidth={1.75} />
-          <span className="text-xs font-medium uppercase tracking-wide">
-            Today's <GlossaryTerm term="personal day">Personal Day</GlossaryTerm>
-          </span>
+        <div className="flex items-center justify-between gap-2">
+          <div className="flex items-center gap-2 text-ink-muted">
+            <Sparkles className="size-4" strokeWidth={1.75} />
+            <span className="text-xs font-medium uppercase tracking-wide">
+              Today's <GlossaryTerm term="personal day">Personal Day</GlossaryTerm>
+            </span>
+          </div>
+          <span className="text-xs text-ink-faint">{todayLabel}</span>
         </div>
-        <div className="mt-4 flex justify-center">
+
+        <div className="mt-6 flex flex-col items-center gap-4">
           <NumberOrb
             value={personalCycles.personalDay.value}
             isMaster={personalCycles.personalDay.isMaster}
             size="lg"
           />
+          {/* Personal Year/Month grouped right under the day number as its immediate context —
+              previously a footer afterthought competing with the Share button for space. */}
+          <div className="flex items-center gap-3 text-xs text-ink-faint">
+            <span>
+              <GlossaryTerm term="personal year">Personal Year</GlossaryTerm>{' '}
+              <span className="nums-tabular text-ink-muted">{personalCycles.personalYear.value}</span>
+            </span>
+            <span aria-hidden="true" className="h-3 w-px bg-line" />
+            <span>
+              <GlossaryTerm term="personal month">Personal Month</GlossaryTerm>{' '}
+              <span className="nums-tabular text-ink-muted">{personalCycles.personalMonth.value}</span>
+            </span>
+          </div>
         </div>
+
         {loadingDaily && (
-          <div className="mt-4 space-y-2">
+          <div className="mx-auto mt-6 max-w-md space-y-2">
             <Skeleton className="h-4 w-full" />
             <Skeleton className="h-4 w-3/4" />
           </div>
         )}
-        {dailyError && <p className="mt-3 text-sm text-negative">{dailyError}</p>}
+        {dailyError && <p className="mt-4 text-center text-sm text-negative">{dailyError}</p>}
         {dailyReading && (
-          <motion.p initial={{ opacity: 0 }} animate={{ opacity: 1 }} className="mt-4 text-ink">
+          <motion.p
+            initial={{ opacity: 0, y: 4 }}
+            animate={{ opacity: 1, y: 0 }}
+            transition={{ duration: 0.4 }}
+            className="mx-auto mt-6 max-w-md text-center font-display text-lg leading-snug text-ink"
+          >
             {highlightGlossaryTerms(dailyReading.body)}
           </motion.p>
         )}
-        <div className="mt-4 flex items-center justify-between">
-          <div className="flex gap-4 text-xs text-ink-faint">
-            <span>
-              <GlossaryTerm term="personal year">Personal Year</GlossaryTerm> {personalCycles.personalYear.value}
-            </span>
-            <span>
-              <GlossaryTerm term="personal month">Personal Month</GlossaryTerm> {personalCycles.personalMonth.value}
-            </span>
-          </div>
+
+        <div className="mt-6 flex justify-center border-t border-line pt-5">
           <Button type="button" variant="outline" size="sm" onClick={shareDailyCard} disabled={dailyCardStatus === 'working'}>
             <Share2 className="size-3.5" strokeWidth={1.75} />
             {dailyCardStatus === 'working' ? 'Preparing…' : dailyCardStatus === 'downloaded' ? 'Downloaded!' : 'Share'}
@@ -339,21 +378,48 @@ export default function NumerologyPage() {
         <p className="mt-1 text-sm text-ink-muted">
           {NUMEROLOGY_SYSTEMS.find((s) => s.id === system)?.label} system.
         </p>
-        <div className="mt-6 grid grid-cols-2 gap-4 sm:grid-cols-3">
-          {CORE_NUMBER_ROWS.map(({ key, label, glossaryTerm }, i) => {
-            const result = coreNumbers[key] as NumberResult
-            return (
-              <Reveal key={key} delay={i * 0.07}>
-                <div className="card-interactive flex h-full flex-col items-center rounded-2xl border border-line bg-gradient-to-br from-white/[0.03] to-transparent px-3 py-5 text-center">
-                  <p className="text-[10px] font-semibold uppercase tracking-[0.08em] text-ink-faint">
-                    <GlossaryTerm term={glossaryTerm}>{label}</GlossaryTerm>
-                  </p>
-                  <NumberOrb value={result.value} isMaster={result.isMaster} className="mt-3" />
-                  <p className="mt-4 text-xs text-ink-muted">{meaningForNumber(result.value).title}</p>
-                </div>
-              </Reveal>
-            )
-          })}
+        {/* Life Path as a primary hero area, the remaining four as a plain 2x2 of supporting
+            numbers — not five identical bordered boxes. Removing the per-item card border/bg
+            here matters as much as the split itself: this whole section already lives inside
+            one Card, and five smaller cards nested inside it was the literal "card inside a
+            card" pattern the brief calls out. Spacing and typography carry the hierarchy now,
+            and four items always tile evenly in a 2-col grid, which also resolves the leftover
+            empty cell the old 3-col/5-item grid left on wider screens. */}
+        <div className="mt-6 grid gap-8 sm:grid-cols-[auto_1fr] sm:items-center">
+          <Reveal>
+            <div className="flex flex-col items-center gap-3 text-center sm:border-r sm:border-line sm:pr-8">
+              <p className="text-[11px] font-semibold uppercase tracking-[0.08em] text-ink-faint">
+                <GlossaryTerm term={PRIMARY_NUMBER_ROW.glossaryTerm}>{PRIMARY_NUMBER_ROW.label}</GlossaryTerm>
+              </p>
+              <NumberOrb
+                value={(coreNumbers[PRIMARY_NUMBER_ROW.key] as NumberResult).value}
+                isMaster={(coreNumbers[PRIMARY_NUMBER_ROW.key] as NumberResult).isMaster}
+                size="lg"
+              />
+              <p className="max-w-[11rem] text-sm text-ink-muted">
+                {meaningForNumber((coreNumbers[PRIMARY_NUMBER_ROW.key] as NumberResult).value).title}
+              </p>
+            </div>
+          </Reveal>
+
+          <div className="grid grid-cols-2 gap-x-6 gap-y-6">
+            {SECONDARY_NUMBER_ROWS.map(({ key, label, glossaryTerm }, i) => {
+              const result = coreNumbers[key] as NumberResult
+              return (
+                <Reveal key={key} delay={0.08 + i * 0.06}>
+                  <div className="group flex flex-col items-center gap-2 text-center">
+                    <p className="text-[10px] font-semibold uppercase tracking-[0.08em] text-ink-faint">
+                      <GlossaryTerm term={glossaryTerm}>{label}</GlossaryTerm>
+                    </p>
+                    <NumberOrb value={result.value} isMaster={result.isMaster} />
+                    <p className="text-xs text-ink-muted transition-colors duration-200 group-hover:text-ink">
+                      {meaningForNumber(result.value).title}
+                    </p>
+                  </div>
+                </Reveal>
+              )
+            })}
+          </div>
         </div>
 
         {chaldeanExtra && (
@@ -420,34 +486,46 @@ export default function NumerologyPage() {
           const meaning = meaningForNumber(result.value)
           return (
             <Card key={key}>
-              <div className="flex items-center justify-between">
-                <h3 className="font-display text-base">
-                  {label} {result.value} — {meaning.title}
-                </h3>
+              <div className="flex items-center justify-between gap-3">
+                <div>
+                  <p className="text-[11px] font-semibold uppercase tracking-[0.08em] text-ink-faint">{label}</p>
+                  <h3 className="mt-1 font-display text-xl">
+                    <span className="nums-tabular text-accent">{result.value}</span>{' '}
+                    <span className="text-ink-faint">·</span> {meaning.title}
+                  </h3>
+                </div>
                 {result.isMaster && <Badge variant="accent">Master Number</Badge>}
               </div>
-              <div className="mt-4 grid gap-4 sm:grid-cols-2">
-                <div>
-                  <p className="text-xs font-medium uppercase tracking-wide text-positive">Strengths</p>
-                  <ul className="mt-2 space-y-1 text-sm text-ink">
-                    {meaning.positiveTraits.map((t) => (
-                      <li key={t}>{t}</li>
-                    ))}
-                  </ul>
+
+              <div className="mt-5 max-w-2xl border-t border-line pt-5">
+                <div className="grid gap-6 sm:grid-cols-2">
+                  <div>
+                    <p className="text-xs font-medium uppercase tracking-wide text-positive">Strengths</p>
+                    <ul className="mt-2.5 space-y-1.5 text-sm leading-relaxed text-ink">
+                      {meaning.positiveTraits.map((t) => (
+                        <li key={t}>{t}</li>
+                      ))}
+                    </ul>
+                  </div>
+                  <div>
+                    <p className="text-xs font-medium uppercase tracking-wide text-ink-faint">Growth edge</p>
+                    <ul className="mt-2.5 space-y-1.5 text-sm leading-relaxed text-ink-muted">
+                      {meaning.shadowTraits.map((t) => (
+                        <li key={t}>{t}</li>
+                      ))}
+                    </ul>
+                  </div>
                 </div>
-                <div>
-                  <p className="text-xs font-medium uppercase tracking-wide text-ink-faint">Growth edge</p>
-                  <ul className="mt-2 space-y-1 text-sm text-ink-muted">
-                    {meaning.shadowTraits.map((t) => (
-                      <li key={t}>{t}</li>
-                    ))}
-                  </ul>
-                </div>
+
+                {/* Real, already-existing copy (meaning.lifeLesson) given the same pull-quote
+                    treatment as the Dashboard's Weekly Deep-Dive highlight — not a new or
+                    fabricated line, just the existing "Life lesson" sentence given the visual
+                    weight it already has conceptually. */}
+                <p className="mt-6 text-xs font-medium uppercase tracking-wide text-ink-faint">Life lesson</p>
+                <p className="mt-2 border-l-2 border-accent/40 pl-4 font-display text-lg italic leading-snug text-ink">
+                  {meaning.lifeLesson}
+                </p>
               </div>
-              <p className="mt-4 text-sm text-ink-muted">
-                <span className="font-medium text-ink">Life lesson: </span>
-                {meaning.lifeLesson}
-              </p>
             </Card>
           )
         })}
@@ -492,7 +570,9 @@ export default function NumerologyPage() {
             transition={{ duration: 0.4 }}
             className="mt-5 border-t border-line pt-5"
           >
-            <p className="text-ink">{highlightGlossaryTerms(reading.body)}</p>
+            <p className="max-w-xl text-[15px] leading-relaxed text-ink-muted">
+              {highlightGlossaryTerms(reading.body)}
+            </p>
           </motion.div>
         )}
       </Card>
