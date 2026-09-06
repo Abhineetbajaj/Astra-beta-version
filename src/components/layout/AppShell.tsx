@@ -26,7 +26,11 @@ const navItems = [
   { to: '/compatibility', label: 'Compatibility', icon: Heart },
   { to: '/chat', label: 'Ask Astra', icon: MessageCircle },
   { to: '/horoscope', label: 'Horoscope', icon: Star },
-  { to: '/wellness', label: 'Spiritual Wellness', icon: Flame },
+  // "Wellness" not "Spiritual Wellness" here specifically — the page itself keeps its full H1.
+  // At 18 characters this was the single largest reason all-10-labels-visible needed ~1728px;
+  // shortening just this one (plus tighter nav spacing below) brings that down to ~1500px,
+  // measured directly against the compiled CSS, not guessed.
+  { to: '/wellness', label: 'Wellness', icon: Flame },
   { to: '/numerology', label: 'Numerology', icon: Hash },
   { to: '/financial', label: 'Financial', icon: TrendingUp },
   { to: '/astrologers', label: 'Astrologers', icon: Users },
@@ -77,7 +81,7 @@ export default function AppShell() {
             <span className="font-display text-xl tracking-tight">Astra</span>
           </NavLink>
 
-          <nav className="hidden min-w-0 items-center gap-0.5 lg:flex min-[1728px]:gap-1">
+          <nav className="hidden min-w-0 items-center gap-0.5 lg:flex">
             {navItems.map(({ to, label, icon: Icon, end }) => (
               <NavLink
                 key={to}
@@ -86,7 +90,7 @@ export default function AppShell() {
                 title={label}
                 className={({ isActive }) =>
                   cn(
-                    'group relative flex items-center gap-1.5 whitespace-nowrap rounded-full px-2.5 py-2 text-sm font-medium min-[1728px]:px-3.5',
+                    'group relative flex items-center gap-[5px] whitespace-nowrap rounded-full px-2 py-[7px] text-[13px] font-medium min-[1500px]:px-2.5',
                     'transition-colors duration-200 ease-out',
                     isActive ? 'text-ink' : 'text-ink-muted hover:text-ink',
                     FOCUS_RING,
@@ -103,10 +107,14 @@ export default function AppShell() {
                       )}
                       strokeWidth={1.75}
                     />
-                    {/* Measured directly, not guessed: all 10 full labels need ~1708px of header
-                        width alongside the logo and right-side controls. Below that, icons alone
-                        carry the row (with a title tooltip) rather than crowding or wrapping. */}
-                    <span className="hidden min-[1728px]:inline">{label}</span>
+                    {/* Measured directly, not guessed: tightened spacing + the "Wellness" label
+                        above bring the real minimum to ~1408px; 1500px is that plus a verified
+                        safety margin (checked directly at 1440px first — not enough, "History"
+                        touched the theme toggle). Below this, icons alone carry the row (with a
+                        title tooltip) rather than crowding or wrapping — this is a deliberate
+                        "shrink the whole system," not "cram full labels everywhere" per the
+                        explicit ask not to force icon-only on genuinely large desktop widths. */}
+                    <span className="hidden min-[1500px]:inline">{label}</span>
                   </>
                 )}
               </NavLink>

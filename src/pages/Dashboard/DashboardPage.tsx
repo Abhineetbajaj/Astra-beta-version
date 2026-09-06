@@ -168,8 +168,8 @@ export default function DashboardPage() {
 
   return (
     <div className="space-y-10">
-      <Card className="grid gap-8 lg:grid-cols-[1fr_200px] lg:items-center">
-        <div>
+      <Card interactive className="grid gap-8 lg:grid-cols-[3fr_2fr] lg:items-stretch">
+        <div className="min-w-0">
           <p className="text-xs uppercase tracking-wide text-ink-faint">{today}</p>
           <h1 className="mt-2 font-display text-4xl leading-tight">
             {greeting},
@@ -197,11 +197,17 @@ export default function DashboardPage() {
             </div>
           )}
           {error && !isMissingChartError(error) && <p className="mt-4 text-sm text-negative">{error}</p>}
+
+          {(reading || loadingReading) && (
+            <p className="mt-7 text-[11px] font-semibold uppercase tracking-[0.08em] text-ink-faint">
+              Today's cosmic overview
+            </p>
+          )}
           {loadingReading && !reading && (
-            <div className="mt-4 max-w-lg space-y-2">
+            <div className="mt-3 space-y-2">
               <Skeleton className="h-4 w-full" />
               <Skeleton className="h-4 w-11/12" />
-              <Skeleton className="h-4 w-2/3" />
+              <Skeleton className="h-4 w-4/5" />
             </div>
           )}
           {reading && (
@@ -209,62 +215,90 @@ export default function DashboardPage() {
               initial={{ opacity: 0, y: 4 }}
               animate={{ opacity: 1, y: 0 }}
               transition={{ duration: 0.4 }}
-              className="mt-4 max-w-lg text-ink-muted"
+              className="mt-3 max-w-2xl text-[15px] leading-relaxed text-ink-muted"
             >
               {highlightGlossaryTerms(reading.body)}
             </motion.p>
           )}
 
-          <div className="mt-6 flex flex-wrap items-center gap-x-3 gap-y-2 text-sm text-ink-muted">
+          {/* Moon sign + active dasha as chips rather than dot-separated inline text — the same
+              real values as before, just given the visual weight of "current astrology context"
+              rather than a footnote. underline={false} on GlossaryTerm per its own documented
+              guidance for content that already has its own affordance (the chip itself). */}
+          <div className="mt-5 flex flex-wrap gap-2">
             {moonRashi && (
-              <span>
+              <span className="inline-flex items-center gap-1 rounded-full border border-line-strong bg-paper-raised/60 px-3 py-1.5 text-xs font-medium text-ink">
                 Moon in {moonRashi.symbol} {moonRashi.name}
               </span>
             )}
-            {moonRashi && active?.maha && <span>·</span>}
             {active?.maha && (
-              <span>
-                {active.maha} <GlossaryTerm term="mahadasha">Mahadasha</GlossaryTerm>
-              </span>
+              <GlossaryTerm term="mahadasha" underline={false}>
+                <span className="inline-flex items-center gap-1 rounded-full border border-accent/25 bg-accent-soft px-3 py-1.5 text-xs font-medium text-accent-strong">
+                  {active.maha} Mahadasha
+                </span>
+              </GlossaryTerm>
             )}
             {active?.antar && (
-              <>
-                <span>·</span>
-                <span>
-                  {active.antar} <GlossaryTerm term="antardasha">Antardasha</GlossaryTerm>
+              <GlossaryTerm term="antardasha" underline={false}>
+                <span className="inline-flex items-center gap-1 rounded-full border border-line-strong bg-paper-raised/60 px-3 py-1.5 text-xs font-medium text-ink">
+                  {active.antar} Antardasha
                 </span>
-              </>
+              </GlossaryTerm>
             )}
           </div>
         </div>
-        <div className="hidden justify-self-end lg:block">
-          {chart && (
-            <motion.div initial={{ opacity: 0, scale: 0.92 }} animate={{ opacity: 1, scale: 1 }} transition={{ duration: 0.5 }}>
-              <NorthIndianChartSVG
-                placements={chart.placements}
-                housesReliable={chart.housesReliable}
-                activeDashaLord={active?.maha}
-                size={180}
-              />
-            </motion.div>
+
+        {/* Right column intentionally ~40% of the card, not a narrow afterthought — the chart
+            gets its own tinted panel and a caption so it reads as part of the reading, not a
+            disconnected decoration next to it. */}
+        <div className="flex flex-col items-center justify-center gap-3 rounded-2xl border border-line-strong bg-paper-raised/40 p-6">
+          {chart ? (
+            <>
+              <motion.div
+                className="glow-breathe relative"
+                initial={{ opacity: 0, scale: 0.92 }}
+                animate={{ opacity: 1, scale: 1 }}
+                transition={{ duration: 0.5 }}
+              >
+                <NorthIndianChartSVG
+                  placements={chart.placements}
+                  housesReliable={chart.housesReliable}
+                  activeDashaLord={active?.maha}
+                  size={200}
+                />
+              </motion.div>
+              <p className="text-center text-xs text-ink-faint">Your current cosmic map</p>
+            </>
+          ) : (
+            <div className="flex h-[200px] items-center justify-center text-xs text-ink-faint">
+              {computingChart ? 'Computing your chart…' : 'Chart unavailable'}
+            </div>
           )}
         </div>
       </Card>
 
-      <div className="grid grid-cols-2 gap-3 sm:grid-cols-4">
-        {[
-          { label: 'Vara', value: panchang.vara },
-          { label: 'Tithi', value: `${panchang.tithi.name} (${panchang.tithi.paksha})` },
-          { label: 'Nakshatra', value: panchang.nakshatra.name },
-          { label: 'Yoga', value: panchang.yoga.name },
-        ].map((item) => (
-          <div key={item.label} className="rounded-xl border border-line px-3 py-2.5">
-            <p className="text-[10px] uppercase tracking-wide text-ink-faint">{item.label}</p>
-            <p className="mt-0.5 truncate text-sm text-ink" title={item.value}>
-              {item.value}
-            </p>
-          </div>
-        ))}
+      <div>
+        <p className="mb-3 text-[11px] font-semibold uppercase tracking-[0.08em] text-ink-faint">
+          Today at a glance
+        </p>
+        <div className="grid grid-cols-2 gap-3 rounded-2xl border border-line-strong bg-paper-raised/20 p-3 sm:grid-cols-4">
+          {[
+            { label: 'Vara', value: panchang.vara },
+            { label: 'Tithi', value: `${panchang.tithi.name} (${panchang.tithi.paksha})` },
+            { label: 'Nakshatra', value: panchang.nakshatra.name },
+            { label: 'Yoga', value: panchang.yoga.name },
+          ].map((item) => (
+            <div
+              key={item.label}
+              className="rounded-xl border border-line bg-paper px-3 py-2.5 transition-colors duration-200 hover:border-line-strong hover:bg-paper-raised/60"
+            >
+              <p className="text-[10px] uppercase tracking-wide text-ink-faint">{item.label}</p>
+              <p className="mt-0.5 truncate text-sm text-ink" title={item.value}>
+                {item.value}
+              </p>
+            </div>
+          ))}
+        </div>
       </div>
 
       <TimingCard lat={selfBirthProfile.lat} lon={selfBirthProfile.lon} />
