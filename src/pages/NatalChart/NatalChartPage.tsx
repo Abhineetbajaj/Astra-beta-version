@@ -15,8 +15,11 @@ import { Skeleton } from '@/components/ui/Skeleton'
 import { Button } from '@/components/ui/Button'
 import { cn } from '@/lib/cn'
 import NorthIndianChartSVG from '@/components/chart/NorthIndianChartSVG'
+import ChartAtmosphere from '@/components/chart/ChartAtmosphere'
 import PlacementsTable from '@/components/chart/PlacementsTable'
 import DashaTimeline from '@/components/chart/DashaTimeline'
+import TiltCard from '@/components/motion/TiltCard'
+import Reveal from '@/components/motion/Reveal'
 
 export default function NatalChartPage() {
   const selfBirthProfile = useAuthStore((s) => s.selfBirthProfile)
@@ -123,39 +126,59 @@ export default function NatalChartPage() {
       </div>
 
       <div className="grid gap-10 lg:grid-cols-[400px_1fr]">
-        <Card className="flex flex-col items-center justify-center py-8">
-          <NorthIndianChartSVG
-            placements={chart.placements}
-            housesReliable={chart.housesReliable}
-            activeDashaLord={active?.maha}
-            size={340}
-          />
-          <div className="mt-6 grid grid-cols-2 gap-x-8 gap-y-2 text-sm">
-            <div>
-              <p className="text-xs uppercase tracking-wide text-ink-faint">Ascendant</p>
-              <p className="mt-0.5">
-                {chart.housesReliable
-                  ? `${ascendantRashi?.symbol} ${namingStyle === 'vedic' ? ascendantRashi?.sanskrit : ascendantRashi?.name}`
-                  : 'Unavailable'}
+        <Reveal>
+          <Card className="flex min-w-0 flex-col items-center py-10">
+            {/* The chart gets its own atmospheric footprint — same restrained orbit-arc +
+                breathing glow treatment already established for the Dashboard's mini chart in
+                Step 4 — rather than sitting flat on the card background like plain content.
+                relative + overflow-hidden clips the atmosphere to this footprint only, so it
+                never reaches the Ascendant/Mahadasha text below. */}
+            <div className="relative flex aspect-square w-[340px] max-w-full items-center justify-center overflow-hidden rounded-2xl">
+              <ChartAtmosphere />
+              <div
+                aria-hidden="true"
+                className="glow-breathe pointer-events-none absolute inset-0 m-auto size-[220px] rounded-full bg-accent/20 blur-[56px]"
+              />
+              <TiltCard maxTilt={4}>
+                <NorthIndianChartSVG
+                  placements={chart.placements}
+                  housesReliable={chart.housesReliable}
+                  activeDashaLord={active?.maha}
+                  size={340}
+                />
+              </TiltCard>
+            </div>
+
+            <div className="mt-8 grid w-full grid-cols-2 gap-x-8 gap-y-2 border-t border-line pt-6 text-sm">
+              <div>
+                <p className="text-xs uppercase tracking-wide text-ink-faint">Ascendant</p>
+                <p className="mt-0.5 font-medium text-ink">
+                  {chart.housesReliable
+                    ? `${ascendantRashi?.symbol} ${namingStyle === 'vedic' ? ascendantRashi?.sanskrit : ascendantRashi?.name}`
+                    : 'Unavailable'}
+                </p>
+              </div>
+              <div>
+                <p className="text-xs uppercase tracking-wide text-ink-faint">Current Mahadasha</p>
+                <p className="mt-0.5 font-medium text-ink">{active?.maha ?? '—'}</p>
+              </div>
+            </div>
+            {!chart.housesReliable && (
+              <p className="mt-4 max-w-[280px] text-center text-xs text-ink-faint">
+                Birth time is approximate, so the ascendant and houses are hidden — everything
+                else is unaffected.
               </p>
-            </div>
-            <div>
-              <p className="text-xs uppercase tracking-wide text-ink-faint">Current Mahadasha</p>
-              <p className="mt-0.5">{active?.maha ?? '—'}</p>
-            </div>
-          </div>
-          {!chart.housesReliable && (
-            <p className="mt-4 max-w-[280px] text-center text-xs text-ink-faint">
-              Birth time is approximate, so the ascendant and houses are hidden — everything
-              else is unaffected.
-            </p>
-          )}
-        </Card>
+            )}
+          </Card>
+        </Reveal>
 
         <div className="min-w-0 space-y-6">
           <Card>
             <h2 className="font-display text-lg">Planetary placements</h2>
-            <div className="mt-4">
+            <p className="mt-1 text-sm text-ink-muted">
+              Each graha's sign, degree, nakshatra, and house for this chart.
+            </p>
+            <div className="mt-5">
               <PlacementsTable placements={chart.placements} housesReliable={chart.housesReliable} namingStyle={namingStyle} />
             </div>
           </Card>

@@ -1,6 +1,7 @@
 import { motion } from 'framer-motion'
 import type { PlanetPlacement } from '@/astro-engine/types'
 import { PLANET_ABBR } from '@/components/chart/glyphs'
+import { cn } from '@/lib/cn'
 
 // Defensive: the astro-engine only ever computes these 9 classical grahas (see EPHEMERIS_BODIES in
 // astro-engine/index.ts — Uranus/Neptune/Pluto have no code path into PlanetPlacement at all), but
@@ -107,7 +108,7 @@ export default function NorthIndianChartSVG({
         viewBox="0 0 400 400"
         width={size}
         height={size}
-        className={className}
+        className={cn('max-w-full h-auto', className)}
         role="img"
         aria-label="House chart unavailable — birth time unknown"
       >
@@ -139,7 +140,7 @@ export default function NorthIndianChartSVG({
       viewBox="0 0 400 400"
       width={size}
       height={size}
-      className={className}
+      className={cn('max-w-full h-auto', className)}
       role="img"
       aria-label="North Indian style Vedic birth chart"
     >

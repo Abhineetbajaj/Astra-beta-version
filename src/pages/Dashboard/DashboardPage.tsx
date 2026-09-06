@@ -271,7 +271,7 @@ export default function DashboardPage() {
             gets its own tinted panel and a caption so it reads as part of the reading, not a
             disconnected decoration next to it. relative + overflow-hidden so the celestial
             atmosphere layer clips to these rounded corners instead of spilling past them. */}
-        <div className="relative flex flex-col items-center justify-center gap-3 overflow-hidden rounded-2xl border border-line-strong bg-paper-raised/40 p-6 shadow-[0_18px_44px_-28px_rgba(0,0,0,0.55)]">
+        <div className="relative flex flex-col items-center justify-center gap-4 overflow-hidden rounded-2xl border border-line-strong bg-paper-raised/40 p-7 shadow-[0_18px_44px_-28px_rgba(0,0,0,0.55)]">
           {chart ? (
             <>
               <ChartAtmosphere />

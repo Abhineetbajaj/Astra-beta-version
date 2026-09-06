@@ -46,34 +46,34 @@ export default function PlacementsTable({ placements, housesReliable, namingStyl
             const nakshatra = NAKSHATRAS[p.nakshatraIndex]
             const dignityLabel = DIGNITY_LABEL[p.dignity]
             return (
-              <tr key={p.planet}>
-                <td className="py-2.5 pr-4">
-                  <span className="flex items-center gap-2">
+              <tr key={p.planet} className="transition-colors duration-150 hover:bg-paper-raised/50">
+                <td className="py-3 pr-4">
+                  <span className="flex items-center gap-2 font-medium text-ink">
                     <span className="text-base text-ink-muted">{PLANET_GLYPH[p.planet]}</span>
                     {p.planet}
-                    {p.retrograde && <span className="text-xs text-negative">R</span>}
+                    {p.retrograde && <span className="text-xs font-normal text-negative">R</span>}
                   </span>
                 </td>
-                <td className="py-2.5 pr-4">
+                <td className="py-3 pr-4 font-medium text-ink">
                   {rashi.symbol}{' '}
                   <GlossaryTerm term={rashi.name.toLowerCase()}>
                     {namingStyle === 'vedic' ? rashi.sanskrit : rashi.name}
                   </GlossaryTerm>
                 </td>
-                <td className="nums-tabular py-2.5 pr-4 text-ink-muted">
+                <td className="nums-tabular py-3 pr-4 text-ink-muted">
                   {formatDegree(p.degreeInRashi)}
                 </td>
-                <td className="py-2.5 pr-4 text-ink-muted">
+                <td className="py-3 pr-4 text-ink-muted">
                   {nakshatra.name} <span className="text-xs">· pada {p.nakshatraPada}</span>
                 </td>
-                <td className={cn('py-2.5 pr-4 nums-tabular', !housesReliable && 'text-ink-faint')}>
+                <td className={cn('py-3 pr-4 nums-tabular', !housesReliable && 'text-ink-faint')}>
                   {housesReliable && p.houseIndex != null ? (
                     <GlossaryTerm term={`house-${p.houseIndex}`}>{p.houseIndex}</GlossaryTerm>
                   ) : (
                     '—'
                   )}
                 </td>
-                <td className="py-2.5">
+                <td className="py-3">
                   {dignityLabel ? (
                     <GlossaryTerm term={p.dignity} underline={false}>
                       <Badge variant={p.dignity === 'debilitated' ? 'neutral' : 'accent'}>

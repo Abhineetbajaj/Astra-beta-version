@@ -50,7 +50,7 @@ export default function DashaTimeline({ dashas, now = new Date() }: DashaTimelin
               <button
                 type="button"
                 onClick={() => setExpanded(isOpen ? null : i)}
-                className="flex w-full items-center justify-between py-3 text-left"
+                className="flex w-full items-center justify-between rounded-lg px-2 py-3 text-left transition-colors duration-150 -mx-2 hover:bg-paper-raised/50 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-accent/50 focus-visible:ring-offset-2 focus-visible:ring-offset-paper"
               >
                 <div className="flex items-center gap-3">
                   <span
