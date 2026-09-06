@@ -23,6 +23,8 @@ import CosmicLoader from '@/components/ui/CosmicLoader'
 import { cn } from '@/lib/cn'
 import { Button } from '@/components/ui/Button'
 import NorthIndianChartSVG from '@/components/chart/NorthIndianChartSVG'
+import NumberOrb from '@/components/numerology/NumberOrb'
+import Reveal from '@/components/motion/Reveal'
 import type { DailyReadingRow, WeeklyReportRow } from '@/types/db'
 
 /** compute-chart failed at some point after the birth profile was saved (see loadChartFacts.ts). */
@@ -44,6 +46,10 @@ const FOCUS_ICONS = [
   { key: 'career_card', label: 'Career', Icon: Briefcase, tint: 'text-spirit', halo: 'bg-spirit/10' },
   { key: 'watch_card', label: 'Watch for', Icon: Eye, tint: 'text-ink-muted', halo: 'bg-ink/5' },
 ] as const
+
+// Today's Focus gets the primary/larger treatment in the guidance grid; the rest stay secondary.
+// Split once here rather than filtering on every render.
+const [PRIMARY_FOCUS, ...SECONDARY_FOCUS] = FOCUS_ICONS
 
 export default function DashboardPage() {
   const profile = useAuthStore((s) => s.profile)
@@ -308,25 +314,29 @@ export default function DashboardPage() {
           <Card interactive>
             <div className="flex items-center justify-between">
               <div className="flex items-center gap-2 text-ink-muted">
-                <Hash className="size-4" strokeWidth={1.75} />
-                <span className="text-xs font-medium uppercase tracking-wide">Personal Day</span>
+                <Hash className="size-4 text-accent" strokeWidth={1.75} />
+                <span className="text-xs font-semibold uppercase tracking-[0.08em]">Personal Day</span>
               </div>
-              <div className="flex items-center gap-3">
-                <span className="nums-tabular text-lg text-ink">{personalDay.value}</span>
-                <button
-                  onClick={shareDailyCard}
-                  disabled={dailyCardStatus === 'working'}
-                  className="flex items-center gap-1 text-xs text-ink-faint hover:text-ink"
-                >
-                  <Share2 className="size-3.5" strokeWidth={1.75} />
-                  {dailyCardStatus === 'working' ? 'Preparing…' : dailyCardStatus === 'downloaded' ? 'Downloaded!' : 'Share'}
-                </button>
+              <button
+                onClick={shareDailyCard}
+                disabled={dailyCardStatus === 'working'}
+                className="flex items-center gap-1 text-xs text-ink-faint hover:text-ink"
+              >
+                <Share2 className="size-3.5" strokeWidth={1.75} />
+                {dailyCardStatus === 'working' ? 'Preparing…' : dailyCardStatus === 'downloaded' ? 'Downloaded!' : 'Share'}
+              </button>
+            </div>
+            {/* NumberOrb reused as-is from the Numerology page redesign — same "restrained warm
+                glow + orbit ring" geometry the brief asks for, not a new visual language. */}
+            <div className="mt-3 flex flex-col items-center gap-4 text-center sm:flex-row sm:text-left">
+              <NumberOrb value={personalDay.value} isMaster={personalDay.isMaster} size="lg" />
+              <div className="min-w-0">
+                <p className="font-display text-xl text-ink">{personalDayMeaning.title}</p>
+                <p className="mt-1 text-sm text-ink-muted">
+                  {personalDayMeaning.positiveTraits[0]}. See your full numerology reading →
+                </p>
               </div>
             </div>
-            <p className="mt-2 text-sm text-ink-muted">
-              {personalDayMeaning.title} — {personalDayMeaning.positiveTraits[0]?.toLowerCase()}. See your full
-              numerology reading →
-            </p>
           </Card>
 
           <div className="pointer-events-none fixed left-[-9999px] top-0" aria-hidden="true">
@@ -346,36 +356,47 @@ export default function DashboardPage() {
       )}
 
       {transits && (
-        <Card>
+        <Card interactive>
           <div className="flex items-center gap-2 text-ink-muted">
-            <Orbit className="size-4" strokeWidth={1.75} />
-            <span className="text-xs font-medium uppercase tracking-wide">Today's sky</span>
+            <Orbit className="size-4 text-accent" strokeWidth={1.75} />
+            <span className="text-xs font-semibold uppercase tracking-[0.08em]">Today's Sky</span>
           </div>
+          <p className="mt-1 text-sm text-ink-muted">Current cosmic atmosphere</p>
 
           {transits.sadeSati.active && transits.sadeSati.phase && (
-            <div className="mt-3 rounded-xl border border-accent/30 bg-accent/5 px-3 py-2 text-sm text-ink">
+            <div className="mt-4 rounded-xl border border-accent/30 bg-accent/5 px-3 py-2 text-sm text-ink">
               <GlossaryTerm term="sade sati">Sade Sati</GlossaryTerm> — Saturn transiting{' '}
               {SADE_SATI_LABEL[transits.sadeSati.phase]} from your natal Moon.
             </div>
           )}
 
-          <div className="mt-3 grid gap-3 sm:grid-cols-3">
+          {/* Editorial row per planet — Planet -> Sign -> context — instead of three boxed cells. */}
+          <div className="mt-4 divide-y divide-line">
             {(['Moon', 'Jupiter', 'Saturn'] as const).map((planet) => {
               const p = transits.placements.find((t) => t.planet === planet)
               if (!p) return null
               const rashi = RASHIS[p.rashiIndex]
               return (
-                <div key={planet} className="rounded-xl border border-line px-3 py-2.5">
-                  <p className="text-[10px] uppercase tracking-wide text-ink-faint">Transiting {planet}</p>
-                  <p className="mt-0.5 text-sm text-ink">
+                <div
+                  key={planet}
+                  className="group flex flex-wrap items-center gap-x-3 gap-y-1 py-3 text-sm first:pt-0 last:pb-0"
+                >
+                  <span className="shrink-0 whitespace-nowrap font-medium text-ink">Transiting {planet}</span>
+                  <span className="text-ink-faint transition-transform duration-200 group-hover:translate-x-0.5">
+                    →
+                  </span>
+                  <span className="text-ink">
                     {rashi.symbol} {rashi.name}
                     {p.retrograde && (
                       <span className="ml-1 text-ink-faint">
                         (<GlossaryTerm term="retrograde">retrograde</GlossaryTerm>)
                       </span>
                     )}
-                  </p>
-                  <p className="text-xs text-ink-faint">{ordinal(p.houseFromMoon)} from your Moon</p>
+                  </span>
+                  <span className="text-ink-faint transition-transform duration-200 group-hover:translate-x-0.5">
+                    →
+                  </span>
+                  <span className="text-ink-muted">{ordinal(p.houseFromMoon)} from your Moon</span>
                 </div>
               )
             })}
@@ -383,43 +404,77 @@ export default function DashboardPage() {
         </Card>
       )}
 
-      {loadingReading && !reading && (
-        <div className="grid gap-4 sm:grid-cols-2">
-          {FOCUS_ICONS.map(({ key }) => (
-            <Card key={key}>
-              <Skeleton className="h-3 w-24" />
-              <Skeleton className="mt-3 h-4 w-full" />
-              <Skeleton className="mt-1.5 h-4 w-3/4" />
-            </Card>
-          ))}
-        </div>
-      )}
+      {(loadingReading || reading) && (
+        <div>
+          <p className="mb-4 text-[11px] font-semibold uppercase tracking-[0.08em] text-ink-faint">
+            Your day, decoded
+          </p>
 
-      {reading && (
-        <div className="grid gap-4 sm:grid-cols-2">
-          {FOCUS_ICONS.map(({ key, label, Icon, tint, halo }, i) => (
-            <motion.div
-              key={key}
-              initial={{ opacity: 0, y: 12 }}
-              animate={{ opacity: 1, y: 0 }}
-              transition={{ duration: 0.5, delay: i * 0.08, ease: [0.16, 1, 0.3, 1] }}
-            >
-              <Card interactive className="group h-full">
-                <div className="flex items-center gap-2.5">
-                  <span className={cn('flex size-7 items-center justify-center rounded-full', halo)}>
-                    <Icon
-                      className={cn('size-3.5 transition-transform duration-300 group-hover:scale-110', tint)}
-                      strokeWidth={1.75}
-                    />
-                  </span>
-                  <span className="text-[11px] font-semibold uppercase tracking-[0.08em] text-ink-faint">
-                    {label}
-                  </span>
-                </div>
-                <p className="mt-3.5 text-ink">{highlightGlossaryTerms(reading[key])}</p>
+          {loadingReading && !reading && (
+            <div className="space-y-4">
+              <Card>
+                <Skeleton className="h-3 w-28" />
+                <Skeleton className="mt-4 h-5 w-full" />
+                <Skeleton className="mt-2 h-5 w-4/5" />
               </Card>
-            </motion.div>
-          ))}
+              <div className="grid gap-4 sm:grid-cols-3">
+                {SECONDARY_FOCUS.map(({ key }) => (
+                  <Card key={key}>
+                    <Skeleton className="h-3 w-16" />
+                    <Skeleton className="mt-3 h-4 w-full" />
+                    <Skeleton className="mt-1.5 h-4 w-3/4" />
+                  </Card>
+                ))}
+              </div>
+            </div>
+          )}
+
+          {reading && (
+            <div className="space-y-4">
+              {/* Primary: Today's Focus gets the visual weight — bigger icon chip, larger serif
+                  text, full-width — everything else in the brief's "occupy more visual space if
+                  appropriate" instruction. */}
+              <Reveal>
+                <Card interactive className="group">
+                  <div className="flex items-center gap-3">
+                    <span className={cn('flex size-9 items-center justify-center rounded-full', PRIMARY_FOCUS.halo)}>
+                      <PRIMARY_FOCUS.Icon
+                        className={cn('size-4 transition-transform duration-300 group-hover:scale-110', PRIMARY_FOCUS.tint)}
+                        strokeWidth={1.75}
+                      />
+                    </span>
+                    <span className="text-xs font-semibold uppercase tracking-[0.08em] text-ink-faint">
+                      {PRIMARY_FOCUS.label}
+                    </span>
+                  </div>
+                  <p className="mt-4 max-w-2xl font-display text-xl leading-snug text-ink">
+                    {highlightGlossaryTerms(reading[PRIMARY_FOCUS.key])}
+                  </p>
+                </Card>
+              </Reveal>
+
+              <div className="grid gap-4 sm:grid-cols-3">
+                {SECONDARY_FOCUS.map(({ key, label, Icon, tint, halo }, i) => (
+                  <Reveal key={key} delay={0.08 + i * 0.06}>
+                    <Card interactive className="group h-full">
+                      <div className="flex items-center gap-2.5">
+                        <span className={cn('flex size-7 items-center justify-center rounded-full', halo)}>
+                          <Icon
+                            className={cn('size-3.5 transition-transform duration-300 group-hover:scale-110', tint)}
+                            strokeWidth={1.75}
+                          />
+                        </span>
+                        <span className="text-[11px] font-semibold uppercase tracking-[0.08em] text-ink-faint">
+                          {label}
+                        </span>
+                      </div>
+                      <p className="mt-3 text-sm text-ink">{highlightGlossaryTerms(reading[key])}</p>
+                    </Card>
+                  </Reveal>
+                ))}
+              </div>
+            </div>
+          )}
         </div>
       )}
 
@@ -432,11 +487,11 @@ export default function DashboardPage() {
         </Link>
       </div>
 
-      <Card>
+      <Card interactive>
         <div className="flex items-center justify-between">
           <div className="flex items-center gap-2">
             <Sparkles className="size-4 text-accent" strokeWidth={1.75} />
-            <h2 className="font-display text-lg">Weekly deep-dive</h2>
+            <h2 className="font-display text-lg">Weekly Deep-Dive</h2>
           </div>
           {!isPremium && (
             <Link to="/pricing" className="flex items-center gap-1 text-xs text-ink-faint hover:text-ink">
@@ -464,24 +519,38 @@ export default function DashboardPage() {
         )}
 
         {weeklyReport && (
-          <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} transition={{ duration: 0.4 }} className="mt-4 space-y-3">
-            {weeklyReport.body.split('\n').filter(Boolean).map((paragraph, i) => (
-              <p key={i} className="text-ink-muted">
-                {highlightGlossaryTerms(paragraph)}
-              </p>
-            ))}
+          <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} transition={{ duration: 0.4 }} className="mt-5">
+            {/* Editorial reading width, not a full-bleed dashboard card — and the opening
+                paragraph (this report's own throughline/theme) gets a larger serif treatment
+                rather than reading as identical body text to the three that follow it. No new
+                section labels invented here: there's no distinct "theme" vs "influences" field
+                in the data, just four paragraphs, so only real structure (first vs. rest) is used. */}
+            <div className="max-w-2xl space-y-4">
+              {weeklyReport.body.split('\n').filter(Boolean).map((paragraph, i) =>
+                i === 0 ? (
+                  <p key={i} className="font-display text-lg leading-snug text-ink">
+                    {highlightGlossaryTerms(paragraph)}
+                  </p>
+                ) : (
+                  <p key={i} className="text-[15px] leading-relaxed text-ink-muted">
+                    {highlightGlossaryTerms(paragraph)}
+                  </p>
+                ),
+              )}
+            </div>
 
             {(weeklyReport.highlights.length > 0 || weeklyReport.watch_outs.length > 0) && (
-              <div className="mt-2 grid gap-4 border-t border-line pt-5 sm:grid-cols-2">
+              <div className="mt-6 grid gap-5 border-t border-line pt-5 sm:grid-cols-2">
                 {weeklyReport.highlights.length > 0 && (
                   <div>
                     <div className="flex items-center gap-2 text-positive">
                       <ThumbsUp className="size-4" strokeWidth={1.75} />
-                      <span className="text-xs font-medium uppercase tracking-wide">Good for you this week</span>
+                      <span className="text-xs font-semibold uppercase tracking-[0.08em]">Good for you this week</span>
                     </div>
-                    <ul className="mt-2.5 space-y-1.5">
+                    <ul className="mt-3 space-y-2">
                       {weeklyReport.highlights.map((item, i) => (
-                        <li key={i} className="text-sm text-ink">
+                        <li key={i} className="flex gap-2 text-sm text-ink">
+                          <span className="mt-2 size-1 shrink-0 rounded-full bg-positive" aria-hidden="true" />
                           {item}
                         </li>
                       ))}
@@ -492,11 +561,12 @@ export default function DashboardPage() {
                   <div>
                     <div className="flex items-center gap-2 text-ink-faint">
                       <ThumbsDown className="size-4" strokeWidth={1.75} />
-                      <span className="text-xs font-medium uppercase tracking-wide">Better to avoid</span>
+                      <span className="text-xs font-semibold uppercase tracking-[0.08em]">Better to avoid</span>
                     </div>
-                    <ul className="mt-2.5 space-y-1.5">
+                    <ul className="mt-3 space-y-2">
                       {weeklyReport.watch_outs.map((item, i) => (
-                        <li key={i} className="text-sm text-ink">
+                        <li key={i} className="flex gap-2 text-sm text-ink">
+                          <span className="mt-2 size-1 shrink-0 rounded-full bg-ink-faint" aria-hidden="true" />
                           {item}
                         </li>
                       ))}
