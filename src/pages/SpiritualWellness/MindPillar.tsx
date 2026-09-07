@@ -6,9 +6,7 @@ import { motion } from 'framer-motion'
 import { Headphones, Lock, Sparkles } from 'lucide-react'
 import { Link } from 'react-router-dom'
 import { useAuthStore } from '@/store/authStore'
-import { useNatalChart } from '@/lib/useNatalChart'
 import {
-  useTodayMeditationTrack,
   useWeeklyMeditationTrack,
   useUpcomingPanchangTrack,
   useMeditationHistory,
@@ -38,13 +36,23 @@ function TeaserTile({ label, locked, onTap }: { label: string; locked: boolean; 
   )
 }
 
-export default function MindPillar() {
+/** What to open on mount, when the user arrives here already having chosen something on the front
+    door — 'today' seeds directly from the already-resolved `todayTrack` prop (no extra fetch); a
+    need/mantra request runs through the exact same `openLibraryTrack` lookup a normal in-pillar tap
+    already uses, so the front door never needs its own copy of that fetch-or-show-locked logic. */
+export type MindAutoOpen = { kind: 'today' } | { kind: 'need' | 'mantra'; key: string; label: string }
+
+interface MindPillarProps {
+  /** Fetched once by the parent page (shared with the front door's Ruling Energy card) rather than
+      re-fetched here — same track either way, no reason for two queries. */
+  todayTrack: MeditationTrackRow | null | undefined
+  autoOpen?: MindAutoOpen | null
+}
+
+export default function MindPillar({ todayTrack, autoOpen = null }: MindPillarProps) {
   const session = useAuthStore((s) => s.session)
   const isPremium = useAuthStore((s) => s.isPremium)
-  const selfBirthProfile = useAuthStore((s) => s.selfBirthProfile)
-  const { chart } = useNatalChart('birth_profile', selfBirthProfile?.id)
 
-  const todayTrack = useTodayMeditationTrack(chart)
   const weeklyTrack = useWeeklyMeditationTrack()
   const panchangTrack = useUpcomingPanchangTrack()
   const history = useMeditationHistory(session?.user.id)
@@ -78,6 +86,19 @@ export default function MindPillar() {
       setLockedTap(label)
     }
   }
+
+  // Runs once on arrival, not on every `todayTrack` refetch — this is a "how did we get here" seed,
+  // not a live sync (the still-loading `todayTrack === undefined` case simply resolves on its own
+  // in the "For You Today" section below if the front door's CTA fired before the fetch settled).
+  useEffect(() => {
+    if (!autoOpen) return
+    if (autoOpen.kind === 'today') {
+      if (todayTrack) setSelected(todayTrack)
+    } else {
+      openLibraryTrack(autoOpen.kind, autoOpen.key, autoOpen.label)
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [])
 
   if (!session) return null
 

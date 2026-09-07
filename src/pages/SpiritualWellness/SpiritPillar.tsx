@@ -3,8 +3,7 @@
 // v1 by deliberate choice — see devotionalTexts.ts's header comment for why.
 import { useMemo, useState } from 'react'
 import { Flame, ChevronDown } from 'lucide-react'
-import { useAuthStore } from '@/store/authStore'
-import { useNatalChart } from '@/lib/useNatalChart'
+import type { NatalChart } from '@/astro-engine/types'
 import { currentDashaLords } from '@/astro-engine'
 import { detectPanchangEvents } from '@/astro-engine/panchangEvents'
 import {
@@ -32,9 +31,12 @@ function DevotionalCard({ text }: { text: DevotionalText }) {
   return (
     <Card className="cursor-pointer" onClick={() => setOpen((o) => !o)}>
       <div className="flex items-center justify-between gap-3">
-        <div>
+        <div className="min-w-0">
           <h3 className="font-display text-base">{text.title}</h3>
           <p className="text-xs text-ink-faint">{text.deity}</p>
+          {/* Real, already-present copy — surfaced while collapsed so the list answers "when would
+              I use this?" at a glance instead of requiring a tap on every card to find out. */}
+          {!open && <p className="mt-1.5 text-xs text-ink-muted">{text.whenToUse}</p>}
         </div>
         <div className="flex items-center gap-2">
           {!text.isComplete && <Badge variant="outline">Excerpt</Badge>}
@@ -59,9 +61,7 @@ function DevotionalCard({ text }: { text: DevotionalText }) {
   )
 }
 
-export default function SpiritPillar() {
-  const selfBirthProfile = useAuthStore((s) => s.selfBirthProfile)
-  const { chart } = useNatalChart('birth_profile', selfBirthProfile?.id)
+export default function SpiritPillar({ chart }: { chart: NatalChart | null }) {
   const [filter, setFilter] = useState<DevotionalOccasion | 'all'>('all')
 
   const prescribed = useMemo(() => {

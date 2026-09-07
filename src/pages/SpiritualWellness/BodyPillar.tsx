@@ -12,6 +12,7 @@ import { Card } from '@/components/ui/Card'
 import { Button } from '@/components/ui/Button'
 import { Skeleton } from '@/components/ui/Skeleton'
 import { DisclaimerBanner } from '@/components/ui/DisclaimerBanner'
+import { cn } from '@/lib/cn'
 import type { MedicalReadingRow } from '@/types/db'
 
 const DISCLAIMER =
@@ -25,6 +26,7 @@ export default function BodyPillar() {
   const [loading, setLoading] = useState(false)
   const [loadingExisting, setLoadingExisting] = useState(true)
   const [error, setError] = useState<string | null>(null)
+  const [expanded, setExpanded] = useState(false)
 
   useEffect(() => {
     if (!session) return setLoadingExisting(false)
@@ -110,7 +112,18 @@ export default function BodyPillar() {
           )}
           {reading && (
             <motion.div initial={{ opacity: 0, y: 6 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 0.4 }} className="mt-5 border-t border-line pt-5">
-              <p className="text-ink">{highlightGlossaryTerms(reading.body)}</p>
+              {/* Clamped by default so the reading opens as something scannable rather than a wall
+                  of text — same line-clamp-4 + expand pattern HistoryPage already uses. Nothing is
+                  hidden: the full text is one tap away and the clamp is purely visual. */}
+              <p className={cn('max-w-2xl text-[15px] leading-relaxed text-ink', !expanded && 'line-clamp-4')}>
+                {highlightGlossaryTerms(reading.body)}
+              </p>
+              <button
+                onClick={() => setExpanded((e) => !e)}
+                className="mt-2 text-sm text-ink-muted underline hover:text-ink"
+              >
+                {expanded ? 'Show less' : 'Read the full reading'}
+              </button>
               <DisclaimerBanner text={reading.disclaimer} className="mt-4" />
             </motion.div>
           )}

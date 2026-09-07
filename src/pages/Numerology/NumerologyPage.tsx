@@ -294,7 +294,12 @@ export default function NumerologyPage() {
             aria-pressed={system === s.id}
             onClick={() => setSystem(s.id)}
             className={cn(
-              'relative flex-1 rounded-full px-4 py-2 text-sm font-medium transition-colors',
+              // isolate is load-bearing, not decorative: without its own stacking context this
+              // button's -z-10 pill span paints behind the track div's own bg-paper-raised
+              // background and is invisible (the active tab then reads only as a text-colour
+              // change). AppShell's nav pill avoids this only because its sticky/z-30 header
+              // already establishes a stacking context with no opaque layer in between.
+              'isolate relative flex-1 rounded-full px-4 py-2 text-sm font-medium transition-colors',
               'focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-accent/50 focus-visible:ring-offset-2 focus-visible:ring-offset-paper',
               system === s.id ? 'text-ink' : 'text-ink-muted hover:text-ink',
             )}
