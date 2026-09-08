@@ -7,7 +7,8 @@ import { cn } from '@/lib/cn'
 import { logMeditationPlay, toggleMeditationFavorite } from '@/lib/useMeditationTracks'
 import type { MeditationTrackRow } from '@/types/db'
 
-function caption(track: MeditationTrackRow): string | null {
+/** Exported for reuse by Mind's leading "today" card — same "why this, for me" line, one place. */
+export function caption(track: MeditationTrackRow): string | null {
   if (track.need_tag && track.planet_context) return `Framed through ${track.planet_context}`
   if (track.panchang_event) return `In observance of ${track.panchang_event}`
   if (track.category === 'mantra' && track.planet_context) return `${track.planet_context} beej mantra`

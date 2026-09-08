@@ -4,12 +4,10 @@
 // need right now" prompt over the real Need library, and doorways into the three pillars. No
 // fabricated content: every string here is either static UI chrome or lifted from data that
 // already exists elsewhere in this section.
-import { ChevronRight, Lock } from 'lucide-react'
 import type { NatalChart } from '@/astro-engine/types'
 import { currentDashaLords } from '@/astro-engine'
 import { PLANET_GLYPH } from '@/components/chart/glyphs'
-import { MANTRA_PLANETS, NEED_TAGS } from '@/data/meditationCategories'
-import { useAccessibleLibraryKeys } from '@/lib/useMeditationTracks'
+import { MANTRA_PLANETS } from '@/data/meditationCategories'
 import type { MeditationTrackRow } from '@/types/db'
 import PageHero from '@/components/layout/PageHero'
 import Reveal from '@/components/motion/Reveal'
@@ -18,9 +16,11 @@ import { Button } from '@/components/ui/Button'
 import { Skeleton } from '@/components/ui/Skeleton'
 import GlossaryTerm from '@/components/GlossaryTerm'
 import RulingPlanetGlyph from '@/components/wellness/RulingPlanetGlyph'
+import NeedPillRow from '@/components/wellness/NeedPillRow'
 import { PILLARS, type Pillar } from '@/pages/SpiritualWellness/SpiritualWellnessPage'
 import type { MindAutoOpen } from '@/pages/SpiritualWellness/MindPillar'
 import { cn } from '@/lib/cn'
+import { ChevronRight } from 'lucide-react'
 
 // Verbatim (truncated at a natural clause boundary, not reworded) from each pillar's own banner
 // copy in Body/MindPillar/SpiritPillar.tsx — no new marketing copy authored for the destinations.
@@ -44,7 +44,6 @@ interface WellnessFrontDoorProps {
 }
 
 export default function WellnessFrontDoor({ chart, chartLoading, todayTrack, onNavigate }: WellnessFrontDoorProps) {
-  const { keys: accessibleKeys } = useAccessibleLibraryKeys()
   const active = chart ? currentDashaLords(chart.dashas, new Date()) : null
   const maha = active?.maha ?? null
   const explanation = maha ? MANTRA_PLANETS.find((m) => m.planet === maha)?.whenToUse : null
@@ -125,17 +124,8 @@ export default function WellnessFrontDoor({ chart, chartLoading, todayTrack, onN
           <p className="text-xs font-semibold uppercase tracking-[0.08em] text-ink-faint">
             What do you need right now?
           </p>
-          <div className="mt-3 flex gap-2 overflow-x-auto pb-1 sm:flex-wrap sm:overflow-x-visible">
-            {NEED_TAGS.map((need) => (
-              <button
-                key={need.key}
-                onClick={() => onNavigate('mind', { kind: 'need', key: need.key, label: need.label })}
-                className="flex shrink-0 items-center gap-1.5 rounded-full border border-line px-3.5 py-1.5 text-xs font-medium text-ink-muted transition-colors hover:border-mind/40 hover:text-ink focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-accent/50 focus-visible:ring-offset-2 focus-visible:ring-offset-paper"
-              >
-                {need.label}
-                {!accessibleKeys.has(need.key) && <Lock className="size-3 text-ink-faint" strokeWidth={1.75} />}
-              </button>
-            ))}
+          <div className="mt-3">
+            <NeedPillRow onSelect={(key, label) => onNavigate('mind', { kind: 'need', key, label })} />
           </div>
         </div>
       </Reveal>

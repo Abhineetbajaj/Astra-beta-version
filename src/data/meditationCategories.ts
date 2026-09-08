@@ -24,18 +24,23 @@ export const MEDITATION_CATEGORIES: MeditationCategoryInfo[] = [
 export interface NeedTagInfo {
   key: string
   label: string
+  /** First-person reframe for the "what do you need right now?" interaction — purely a display
+      string layered over the same real key/routing, so it can read the way a person would actually
+      describe themselves without touching what the tag means or does. Optional: falls back to
+      `label` wherever it isn't set. */
+  humanLabel?: string
   /** The planetary framing this need is written through, per the spec. */
   planetContext: string
 }
 
 export const NEED_TAGS: NeedTagInfo[] = [
-  { key: 'stress-anxiety', label: 'Stress & anxiety', planetContext: 'Moon' },
-  { key: 'career-doubt', label: 'Career doubt', planetContext: 'Saturn' },
-  { key: 'financial-blocks', label: 'Financial blocks', planetContext: 'Venus/Jupiter' },
-  { key: 'relationship-healing', label: 'Relationship healing', planetContext: 'Venus' },
-  { key: 'grief-loss', label: 'Grief & loss', planetContext: 'Ketu' },
-  { key: 'confidence', label: 'Confidence', planetContext: 'Sun' },
-  { key: 'sleep', label: 'Sleep', planetContext: 'Moon' },
+  { key: 'stress-anxiety', label: 'Stress & anxiety', humanLabel: "I'm feeling anxious", planetContext: 'Moon' },
+  { key: 'career-doubt', label: 'Career doubt', humanLabel: 'I feel stuck', planetContext: 'Saturn' },
+  { key: 'financial-blocks', label: 'Financial blocks', humanLabel: "I'm worried about money", planetContext: 'Venus/Jupiter' },
+  { key: 'relationship-healing', label: 'Relationship healing', humanLabel: 'My heart needs healing', planetContext: 'Venus' },
+  { key: 'grief-loss', label: 'Grief & loss', humanLabel: "I'm grieving", planetContext: 'Ketu' },
+  { key: 'confidence', label: 'Confidence', humanLabel: 'I need confidence', planetContext: 'Sun' },
+  { key: 'sleep', label: 'Sleep', humanLabel: "I can't switch off", planetContext: 'Moon' },
 ]
 
 /** The 9 grahas, in classical order, each with a one-line "when to use this" prompt for the mantra library. */
