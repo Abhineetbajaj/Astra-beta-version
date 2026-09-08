@@ -4,7 +4,7 @@
 // need right now" prompt over the real Need library, and doorways into the three pillars. No
 // fabricated content: every string here is either static UI chrome or lifted from data that
 // already exists elsewhere in this section.
-import { Lock } from 'lucide-react'
+import { ChevronRight, Lock } from 'lucide-react'
 import type { NatalChart } from '@/astro-engine/types'
 import { currentDashaLords } from '@/astro-engine'
 import { PLANET_GLYPH } from '@/components/chart/glyphs'
@@ -130,7 +130,7 @@ export default function WellnessFrontDoor({ chart, chartLoading, todayTrack, onN
               <button
                 key={need.key}
                 onClick={() => onNavigate('mind', { kind: 'need', key: need.key, label: need.label })}
-                className="flex shrink-0 items-center gap-1.5 rounded-full border border-line px-3.5 py-1.5 text-xs font-medium text-ink-muted transition-colors hover:border-mind/40 hover:text-ink"
+                className="flex shrink-0 items-center gap-1.5 rounded-full border border-line px-3.5 py-1.5 text-xs font-medium text-ink-muted transition-colors hover:border-mind/40 hover:text-ink focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-accent/50 focus-visible:ring-offset-2 focus-visible:ring-offset-paper"
               >
                 {need.label}
                 {!accessibleKeys.has(need.key) && <Lock className="size-3 text-ink-faint" strokeWidth={1.75} />}
@@ -141,19 +141,25 @@ export default function WellnessFrontDoor({ chart, chartLoading, todayTrack, onN
       </Reveal>
 
       <Reveal delay={0.1}>
-        <div className="grid grid-cols-1 gap-3 sm:grid-cols-3">
+        {/* One bordered list, not three separate cards — three co-equal destinations don't need
+            three boxes competing for the same visual weight; a divided list says "here's where to
+            go next" without adding another layer of card-inside-card. */}
+        <div className="divide-y divide-line overflow-hidden rounded-2xl border border-line bg-paper-raised/60">
           {PILLARS.map(({ key, label, icon: Icon }) => (
             <button
               key={key}
               onClick={() => onNavigate(key)}
-              className={cn(
-                'card-interactive rounded-2xl border border-line bg-paper-raised/60 p-5 text-left',
-                'bg-gradient-to-br from-white/[0.03] to-transparent',
-              )}
+              className="group flex w-full items-center gap-3 px-5 py-4 text-left transition-colors hover:bg-paper-raised focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-accent/50 focus-visible:ring-offset-2 focus-visible:ring-offset-paper"
             >
-              <Icon className={cn('size-5', DOORWAY_ICON_TINT[key])} strokeWidth={1.75} />
-              <p className="mt-2.5 font-display text-base">{label}</p>
-              <p className="mt-1 text-xs text-ink-muted">{DOORWAY_TEASER[key]}</p>
+              <Icon className={cn('size-5 shrink-0', DOORWAY_ICON_TINT[key])} strokeWidth={1.75} />
+              <div className="min-w-0 flex-1">
+                <p className="font-display text-base">{label}</p>
+                <p className="mt-0.5 text-xs text-ink-muted">{DOORWAY_TEASER[key]}</p>
+              </div>
+              <ChevronRight
+                className="size-4 shrink-0 text-ink-faint transition-transform duration-200 group-hover:translate-x-0.5"
+                strokeWidth={1.75}
+              />
             </button>
           ))}
         </div>

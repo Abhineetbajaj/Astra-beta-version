@@ -63,7 +63,7 @@ export default function SpiritualWellnessPage() {
           <div className="flex items-center justify-between gap-3">
             <button
               onClick={() => setPillar(null)}
-              className="text-sm text-ink-faint hover:text-ink"
+              className="rounded text-sm text-ink-faint hover:text-ink focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-accent/50 focus-visible:ring-offset-2 focus-visible:ring-offset-paper"
             >
               ← Overview
             </button>
@@ -84,6 +84,7 @@ export default function SpiritualWellnessPage() {
                     // descendant unless something between them establishes a stacking context) —
                     // confirmed by direct rendering test, not assumed.
                     'isolate relative flex flex-col items-center gap-1.5 rounded-xl px-3 py-3.5 transition-colors',
+                    'focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-accent/50 focus-visible:ring-offset-2 focus-visible:ring-offset-paper',
                     active ? ACTIVE_TAB_TEXT[p.key] : 'text-ink-muted hover:bg-paper',
                   )}
                 >
