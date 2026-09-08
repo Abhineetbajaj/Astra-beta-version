@@ -111,7 +111,9 @@ export default function SpiritualWellnessPage() {
               exit={{ opacity: 0, y: -6 }}
               transition={{ duration: 0.2 }}
             >
-              {pillar === 'body' && <BodyPillar />}
+              {pillar === 'body' && (
+                <BodyPillar chart={chart} chartLoading={chartLoading} onExplore={enterPillar} />
+              )}
               {pillar === 'mind' && <MindPillar todayTrack={todayTrack} autoOpen={mindAutoOpen} />}
               {pillar === 'spirit' && <SpiritPillar chart={chart} />}
             </motion.div>

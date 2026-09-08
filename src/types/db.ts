@@ -152,11 +152,29 @@ export interface FinancialReadingRow {
   created_at: string
 }
 
+/** The structured facts `medical-reading` computes and stores alongside its AI-narrated `body` —
+    written by supabase/functions/medical-reading/index.ts (see `indications` there for the exact
+    shape). Previously typed `unknown` and never read back; Step 10 of the Wellness redesign starts
+    surfacing these as real, already-computed scannable signals instead of only prose. Kept loose
+    (`string` for planet/dignity names rather than importing astro-engine's PlanetId/Dignity unions)
+    because this is JSONB round-tripped through Postgres — the real union types don't survive that
+    trip, so treat every field as needing a runtime check before use, same discipline as the rest of
+    this codebase applies to any DB-sourced value. `ascendantLordVitality`/`houseLords`/
+    `restProneperiods` are only populated when the natal ascendant is known — an unreliable birth
+    time leaves them empty, not fabricated. */
+export interface MedicalReadingIndications {
+  houseOccupants: Record<string, string[]>
+  houseLords: { house: number; lord: string; dignity: string; afflicted: boolean; mitigated: boolean }[]
+  ascendantLordVitality: { lord: string; dignity: string; house: number | null; retrograde: boolean } | Record<string, never>
+  restProneperiods: { lord: string; startDate: string; endDate: string; classification: 'rest-prone' | 'steady' }[]
+  currentPeriodOutlook: { mahadashaLord: string; antardashaLord: string | null }
+}
+
 export interface MedicalReadingRow {
   id: string
   user_id: string
   birth_profile_id: string
-  indications: unknown
+  indications: MedicalReadingIndications
   body: string
   disclaimer: string
   created_at: string
