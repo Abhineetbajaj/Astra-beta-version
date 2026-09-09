@@ -18,6 +18,7 @@ import ShareCard from '@/components/share/ShareCard'
 import { shareCardImage } from '@/lib/shareCardImage'
 import LoShuGridDisplay from '@/components/numerology/LoShuGridDisplay'
 import NumberOrb from '@/components/numerology/NumberOrb'
+import ReadingAudioButton from '@/components/audio/ReadingAudioButton'
 import Reveal from '@/components/motion/Reveal'
 import { Card } from '@/components/ui/Card'
 import { Button } from '@/components/ui/Button'
@@ -370,7 +371,8 @@ export default function NumerologyPage() {
           </motion.p>
         )}
 
-        <div className="mt-6 flex justify-center border-t border-line pt-5">
+        <div className="mt-6 flex flex-wrap items-start justify-center gap-3 border-t border-line pt-5">
+          {dailyReading && <ReadingAudioButton table="numerology_daily_readings" readingId={dailyReading.id} />}
           <Button type="button" variant="outline" size="sm" onClick={shareDailyCard} disabled={dailyCardStatus === 'working'}>
             <Share2 className="size-3.5" strokeWidth={1.75} />
             {dailyCardStatus === 'working' ? 'Preparing…' : dailyCardStatus === 'downloaded' ? 'Downloaded!' : 'Share'}

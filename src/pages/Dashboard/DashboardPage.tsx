@@ -26,6 +26,7 @@ import NorthIndianChartSVG from '@/components/chart/NorthIndianChartSVG'
 import ChartAtmosphere from '@/components/chart/ChartAtmosphere'
 import NumberOrb from '@/components/numerology/NumberOrb'
 import MoonPhaseGlyph from '@/components/dashboard/MoonPhaseGlyph'
+import ReadingAudioButton from '@/components/audio/ReadingAudioButton'
 import Reveal from '@/components/motion/Reveal'
 import TiltCard from '@/components/motion/TiltCard'
 import type { DailyReadingRow, WeeklyReportRow } from '@/types/db'
@@ -238,6 +239,11 @@ export default function DashboardPage() {
             >
               {highlightGlossaryTerms(reading.body)}
             </motion.p>
+          )}
+          {reading && (
+            <div className="mt-4 flex">
+              <ReadingAudioButton table="daily_readings" readingId={reading.id} className="items-start" />
+            </div>
           )}
 
           {/* Moon sign + active dasha as chips rather than dot-separated inline text — the same
