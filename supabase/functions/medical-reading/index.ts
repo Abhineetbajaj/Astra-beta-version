@@ -108,10 +108,16 @@ Deno.serve(async (req) => {
       'resilience/pacing patterns, not conditions.\n' +
       '3. Name which upcoming/current dasha periods look more rest-prone vs. steady, by lord, and mention the ' +
       'current Mahadasha/Antardasha lords specifically (currentPeriodOutlook).\n' +
-      '4. Close with one grounded, practical reflection PROMPT about pacing or self-care — phrased as something to ' +
-      'consider, never a directive or medical instruction.\n' +
+      '4. Close with exactly one concrete, practical recommendation grounded in the facts above (the ascendant ' +
+      'lord\'s vitality, an afflicted/mitigated house, or the current dasha\'s pacing) — the one thing to actually ' +
+      'do about pacing or self-care today, not a topic to reflect on. Start it with an action verb where natural ' +
+      '(e.g. "Keep...", "Prioritize...", "Give yourself...", "Ease off..."). It must read as a single, standalone ' +
+      'directive — understandable without the rest of the reading, never a question, never phrased as something to ' +
+      '"consider" or "reflect on", never more than one suggestion, and it must NOT end with a question mark.\n' +
       'Use ONLY soft, non-diagnostic language: energy levels, rest needs, resilience, pacing. NEVER name a specific ' +
-      'disease, condition, or body-system diagnosis, and NEVER make a definitive prediction about health outcomes. ' +
+      'disease, condition, or body-system diagnosis, and NEVER make a definitive prediction about health outcomes ' +
+      '(including accidents or body-part-specific claims) — the closing recommendation is about pacing and ' +
+      'self-care, never a medical instruction. ' +
       `End your response with exactly this sentence on its own line: "${disclaimer}"`
 
     const body = await generateWithGemini({
