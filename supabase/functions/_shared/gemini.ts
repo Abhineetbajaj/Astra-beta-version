@@ -9,7 +9,9 @@
 // confirmed by direct testing against this project's key). gemini-3.5-flash is the current stable
 // flash-tier model as of this writing; re-verify against `GET /v1beta/models` if generation starts
 // failing with a 404 again — Google rotates model availability over time.
-const GEMINI_MODEL = 'gemini-3.5-flash'
+// Exported so metering can record the model actually used rather than a duplicated literal that
+// would silently drift the next time this constant changes.
+export const GEMINI_MODEL = 'gemini-3.5-flash'
 
 function requireGeminiKey(): string {
   const key = Deno.env.get('GEMINI_API_KEY')
