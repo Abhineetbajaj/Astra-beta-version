@@ -13,6 +13,7 @@ import {
   Star,
   Flame,
   Hash,
+  AudioLines,
 } from 'lucide-react'
 import { useAuthStore } from '@/store/authStore'
 import { Badge } from '@/components/ui/Badge'
@@ -24,6 +25,7 @@ const navItems = [
   { to: '/dashboard', label: 'Today', icon: Sparkles, end: true },
   { to: '/chart', label: 'Chart', icon: Compass },
   { to: '/compatibility', label: 'Compatibility', icon: Heart },
+  { to: '/ai-astrologer', label: 'Astra AI', icon: AudioLines },
   { to: '/chat', label: 'Ask Astra', icon: MessageCircle },
   { to: '/horoscope', label: 'Horoscope', icon: Star },
   // "Wellness" not "Spiritual Wellness" here specifically — the page itself keeps its full H1.

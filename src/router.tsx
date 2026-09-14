@@ -11,6 +11,7 @@ import DashboardPage from '@/pages/Dashboard/DashboardPage'
 import NatalChartPage from '@/pages/NatalChart/NatalChartPage'
 import CompatibilityPage from '@/pages/Compatibility/CompatibilityPage'
 import ChatPage from '@/pages/Chat/ChatPage'
+import AstrologerPage from '@/pages/Astrologer/AstrologerPage'
 import FinancialPage from '@/pages/Financial/FinancialPage'
 import HoroscopePage from '@/pages/Horoscope/HoroscopePage'
 import SpiritualWellnessPage from '@/pages/SpiritualWellness/SpiritualWellnessPage'
@@ -39,6 +40,7 @@ export default function AppRouter() {
           <Route path="/chart" element={<NatalChartPage />} />
           <Route path="/compatibility" element={<CompatibilityPage />} />
           <Route path="/chat" element={<ChatPage />} />
+          <Route path="/ai-astrologer" element={<AstrologerPage />} />
           <Route path="/horoscope" element={<HoroscopePage />} />
           <Route path="/wellness" element={<SpiritualWellnessPage />} />
           <Route path="/numerology" element={<NumerologyPage />} />
