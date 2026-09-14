@@ -59,10 +59,43 @@ function keyFor(match: RegExpExecArray): string | null {
   return found?.key ?? null
 }
 
+// A deliberately small subset for long conversational answers. A real reply names a planet or a
+// house a dozen times, and marking every one turns prose into an annotated textbook. These are the
+// concepts a reader might genuinely not know; signs, house numbers and ordinary astrology adjectives
+// are dropped because they read as vocabulary, not jargon.
+const CONCISE_PHRASES = [
+  'Sade Sati', 'Guru Gochar', 'Antardasha', 'Mahadasha', 'Rahu', 'Ketu', 'Venus', 'Jupiter', 'Saturn',
+]
+
+const CONCISE_TERMS = SIMPLE_TERMS.filter((t) =>
+  CONCISE_PHRASES.some((p) => p.toLowerCase() === t.phrase.toLowerCase()),
+)
+
+// No "Nth house" alternative here — that is the single biggest source of underline noise in a real
+// answer, and a house number is self-explanatory in context.
+const CONCISE_PATTERN = new RegExp(`\\b(${CONCISE_TERMS.map((t) => escapeRegExp(t.phrase)).join('|')})\\b`, 'gi')
+
+export interface HighlightOptions {
+  /**
+   * 'full' (default) marks every known term, every time — the existing behaviour every other page
+   * depends on. 'concise' marks only high-value concepts, and only the FIRST time each appears, so
+   * a long answer reads as editorial prose rather than a marked-up document.
+   */
+  scope?: 'full' | 'concise'
+  /**
+   * Shared first-occurrence memory. Callers that highlight one body of text across several calls
+   * (e.g. splitting a paragraph around **bold** spans) must pass a single Set, otherwise each call
+   * starts fresh and the same term gets marked once per segment instead of once per answer.
+   */
+  seen?: Set<string>
+}
+
 /** Splits `text` around known glossary terms, wrapping each in a tap-to-define <GlossaryTerm>. */
-export function highlightGlossaryTerms(text: string): ReactNode[] {
+export function highlightGlossaryTerms(text: string, options: HighlightOptions = {}): ReactNode[] {
+  const concise = options.scope === 'concise'
   const nodes: ReactNode[] = []
-  const regex = new RegExp(COMBINED_PATTERN.source, 'gi')
+  const regex = new RegExp((concise ? CONCISE_PATTERN : COMBINED_PATTERN).source, 'gi')
+  const seen = options.seen ?? new Set<string>()
   let lastIndex = 0
   let match: RegExpExecArray | null
   let nodeKey = 0
@@ -72,8 +105,12 @@ export function highlightGlossaryTerms(text: string): ReactNode[] {
 
     const glossaryKey = keyFor(match)
     const matchedText = match[0]
+    // In concise mode the second and later mentions render as plain text.
+    const alreadyMarked = concise && glossaryKey !== null && seen.has(glossaryKey)
+    if (glossaryKey) seen.add(glossaryKey)
+
     nodes.push(
-      glossaryKey ? (
+      glossaryKey && !alreadyMarked ? (
         <GlossaryTerm key={nodeKey++} term={glossaryKey}>
           {matchedText}
         </GlossaryTerm>

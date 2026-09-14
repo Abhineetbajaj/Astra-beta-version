@@ -1,4 +1,4 @@
-import { Routes, Route } from 'react-router-dom'
+import { Routes, Route, Navigate } from 'react-router-dom'
 import AuthGate from '@/components/layout/AuthGate'
 import AppShell from '@/components/layout/AppShell'
 import PremiumGate from '@/components/layout/PremiumGate'
@@ -16,9 +16,6 @@ import FinancialPage from '@/pages/Financial/FinancialPage'
 import HoroscopePage from '@/pages/Horoscope/HoroscopePage'
 import SpiritualWellnessPage from '@/pages/SpiritualWellness/SpiritualWellnessPage'
 import NumerologyPage from '@/pages/Numerology/NumerologyPage'
-import AstrologersPage from '@/pages/Astrologers/AstrologersPage'
-import AstrologerDetailPage from '@/pages/Astrologers/AstrologerDetailPage'
-import ConsultationPage from '@/pages/Astrologers/ConsultationPage'
 import WalletPage from '@/pages/Wallet/WalletPage'
 import HistoryPage from '@/pages/History/HistoryPage'
 import ProfilePage from '@/pages/Profile/ProfilePage'
@@ -40,16 +37,19 @@ export default function AppRouter() {
           <Route path="/chart" element={<NatalChartPage />} />
           <Route path="/compatibility" element={<CompatibilityPage />} />
           <Route path="/chat" element={<ChatPage />} />
-          <Route path="/ai-astrologer" element={<AstrologerPage />} />
           <Route path="/horoscope" element={<HoroscopePage />} />
           <Route path="/wellness" element={<SpiritualWellnessPage />} />
           <Route path="/numerology" element={<NumerologyPage />} />
           <Route element={<PremiumGate />}>
             <Route path="/financial" element={<FinancialPage />} />
           </Route>
-          <Route path="/astrologers" element={<AstrologersPage />} />
-          <Route path="/astrologers/:id" element={<AstrologerDetailPage />} />
-          <Route path="/consultations/:id" element={<ConsultationPage />} />
+          {/* Astra AI is the astrologer experience. The sample-persona marketplace that used to
+              live here is gone; these redirects keep old links and bookmarks working rather than
+              dropping them on a blank route. */}
+          <Route path="/astrologers" element={<AstrologerPage />} />
+          <Route path="/astrologers/:id" element={<Navigate to="/astrologers" replace />} />
+          <Route path="/consultations/:id" element={<Navigate to="/astrologers" replace />} />
+          <Route path="/ai-astrologer" element={<Navigate to="/astrologers" replace />} />
           <Route path="/wallet" element={<WalletPage />} />
           <Route path="/history" element={<HistoryPage />} />
           <Route path="/profile" element={<ProfilePage />} />

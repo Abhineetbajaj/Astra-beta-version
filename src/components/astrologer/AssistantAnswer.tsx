@@ -1,4 +1,4 @@
-import { useState } from 'react'
+import { Fragment, useState, type ReactNode } from 'react'
 import { Pause, Play, RotateCcw, Volume2 } from 'lucide-react'
 import { highlightGlossaryTerms } from '@/lib/highlightGlossaryTerms'
 import { cn } from '@/lib/cn'
@@ -15,6 +15,48 @@ import { cn } from '@/lib/cn'
 
 /** Paragraphs shown before collapsing. Chosen so a typical 3-4 paragraph reply never collapses. */
 const COLLAPSE_AFTER = 3
+
+/** `**bold**` only. The model emits it around planet, dasha and yoga names, and without this the
+    asterisks render literally — which is what users were seeing. Deliberately one pattern rather
+    than a markdown dependency: no HTML is ever constructed, so there is nothing to sanitise and
+    no dangerouslySetInnerHTML. Any other markdown syntax passes through untouched, as before. */
+const BOLD_PATTERN = /\*\*(.+?)\*\*/g
+
+/** Glossary-highlights `text`, honouring **bold** spans. Each highlight call is wrapped in a keyed
+    Fragment because highlightGlossaryTerms restarts its own keys at 0 on every call. */
+function renderInline(text: string, keyPrefix: string, seen: Set<string>): ReactNode[] {
+  const out: ReactNode[] = []
+  let lastIndex = 0
+  let match: RegExpExecArray | null
+  let i = 0
+  const regex = new RegExp(BOLD_PATTERN.source, 'g')
+
+  while ((match = regex.exec(text)) !== null) {
+    if (match.index > lastIndex) {
+      out.push(
+        <Fragment key={`${keyPrefix}-t${i}`}>
+          {highlightGlossaryTerms(text.slice(lastIndex, match.index), { scope: 'concise', seen })}
+        </Fragment>,
+      )
+    }
+    out.push(
+      <strong key={`${keyPrefix}-b${i}`} className="font-semibold text-ink">
+        {highlightGlossaryTerms(match[1], { scope: 'concise', seen })}
+      </strong>,
+    )
+    lastIndex = match.index + match[0].length
+    i++
+  }
+
+  if (lastIndex < text.length) {
+    out.push(
+      <Fragment key={`${keyPrefix}-t${i}`}>
+        {highlightGlossaryTerms(text.slice(lastIndex), { scope: 'concise', seen })}
+      </Fragment>,
+    )
+  }
+  return out
+}
 
 export type SpeechState = 'idle' | 'preparing' | 'playing' | 'paused' | 'unavailable'
 
@@ -45,11 +87,15 @@ export default function AssistantAnswer({
   const collapsible = paragraphs.length > COLLAPSE_AFTER
   const visible = collapsible && !expanded ? paragraphs.slice(0, COLLAPSE_AFTER) : paragraphs
 
+  // One memory for the whole answer, so a term is defined on first mention and reads as plain prose
+  // everywhere after. Rebuilt each render, which is what keeps it in sync with `visible`.
+  const seenTerms = new Set<string>()
+
   return (
     <div className={cn('space-y-3', muted && 'opacity-60')}>
       <div className={cn('space-y-3 text-[15px] leading-relaxed', muted ? 'text-ink-muted' : 'text-ink')}>
         {visible.map((p, i) => (
-          <p key={i}>{highlightGlossaryTerms(p)}</p>
+          <p key={i}>{renderInline(p, `p${i}`, seenTerms)}</p>
         ))}
       </div>
 

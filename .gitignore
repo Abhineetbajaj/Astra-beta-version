@@ -18,6 +18,12 @@ dist-ssr
 !.env.example
 !.env.*.example
 
+# Local agent/CLI tooling, installed per-machine (Higgsfield skills and friends) — not product
+# code. Delete these three lines if the team later decides to version the skill set deliberately.
+.agents
+.claude
+skills-lock.json
+
 # Editor directories and files
 .vscode/*
 !.vscode/extensions.json

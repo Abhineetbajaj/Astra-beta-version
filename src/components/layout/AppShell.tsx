@@ -4,7 +4,6 @@ import {
   Compass,
   Heart,
   MessageCircle,
-  Users,
   Clock,
   Sparkles,
   Wallet,
@@ -25,7 +24,6 @@ const navItems = [
   { to: '/dashboard', label: 'Today', icon: Sparkles, end: true },
   { to: '/chart', label: 'Chart', icon: Compass },
   { to: '/compatibility', label: 'Compatibility', icon: Heart },
-  { to: '/ai-astrologer', label: 'Astra AI', icon: AudioLines },
   { to: '/chat', label: 'Ask Astra', icon: MessageCircle },
   { to: '/horoscope', label: 'Horoscope', icon: Star },
   // "Wellness" not "Spiritual Wellness" here specifically — the page itself keeps its full H1.
@@ -35,9 +33,20 @@ const navItems = [
   { to: '/wellness', label: 'Wellness', icon: Flame },
   { to: '/numerology', label: 'Numerology', icon: Hash },
   { to: '/financial', label: 'Financial', icon: TrendingUp },
-  { to: '/astrologers', label: 'Astrologers', icon: Users },
-  { to: '/history', label: 'History', icon: Clock },
+  // One astrologer entry, and it opens Astra AI. The nav keeps the familiar word; the page itself
+  // carries the product identity. AudioLines rather than Users — this is no longer a directory of
+  // people.
+  { to: '/astrologers', label: 'Astrologers', icon: AudioLines },
+  // History is a utility, not a destination you navigate between — on desktop it sits with the
+  // theme/plan/profile controls instead of competing with the primary row. It stays in this list
+  // because the mobile row below scrolls horizontally and has no crowding constraint.
+  { to: '/history', label: 'History', icon: Clock, utility: true },
 ]
+
+/** The desktop primary row. Adding an eleventh item pushed the all-labels width past the header's
+    budget (the ~1408px measured below assumed ten), so utilities are split out rather than the
+    whole row being squeezed further. */
+const primaryNavItems = navItems.filter((item) => !item.utility)
 
 // Shared focus-ring treatment for the right-side icon/text controls — Button.tsx already
 // establishes this exact ring; the nav's own controls weren't using it at all before this pass.
@@ -77,14 +86,16 @@ export default function AppShell() {
         {/* Wider than <main>'s max-w-6xl deliberately — that width is tuned for readable prose,
             but a 10-item nav plus logo and controls measures ~1708px at minimum before crowding.
             Capped (not full-bleed) so it doesn't sprawl absurdly on ultrawide monitors. */}
-        <div className="mx-auto flex h-16 max-w-[1920px] items-center justify-between gap-4 px-6">
+        {/* px-4 below sm matches the mobile nav row underneath and buys back the last few pixels
+            the utility cluster needs at 375px. */}
+        <div className="mx-auto flex h-16 max-w-[1920px] items-center justify-between gap-4 px-4 sm:px-6">
           <NavLink to="/dashboard" className={cn('flex items-center gap-1.5 shrink-0', FOCUS_RING)}>
             <Sparkles className="size-4 text-accent" strokeWidth={1.75} />
             <span className="font-display text-xl tracking-tight">Astra</span>
           </NavLink>
 
           <nav className="hidden min-w-0 items-center gap-0.5 lg:flex">
-            {navItems.map(({ to, label, icon: Icon, end }) => (
+            {primaryNavItems.map(({ to, label, icon: Icon, end }) => (
               <NavLink
                 key={to}
                 to={to}
@@ -123,9 +134,31 @@ export default function AppShell() {
             ))}
           </nav>
 
-          <div className="flex shrink-0 items-center gap-3">
+          {/* Utility cluster. The leading divider and the wider left gap are what separate these
+              account-level controls from the primary nav — without it the last nav item read as
+              part of the same row and the whole right side looked crowded. */}
+          {/* gap-2 below sm: at 375px the theme toggle, plan badge, avatar and sign-out together
+              overflowed the viewport at gap-3. Nothing is dropped — every control stays reachable,
+              the spacing just tightens where the room genuinely isn't there. */}
+          <div className="flex shrink-0 items-center gap-2 sm:gap-3 lg:ml-3 lg:gap-3.5">
+            <div className="hidden h-5 w-px bg-line lg:block" aria-hidden="true" />
+            <NavLink
+              to="/history"
+              aria-label="History"
+              title="History"
+              className={({ isActive }) =>
+                cn(
+                  'hidden size-8 items-center justify-center rounded-full transition-colors lg:flex',
+                  isActive ? 'text-accent' : 'text-ink-muted hover:bg-paper-raised hover:text-ink',
+                  FOCUS_RING,
+                )
+              }
+            >
+              <Clock className="size-4" strokeWidth={1.75} />
+            </NavLink>
             <ThemeToggle />
-            <div className="h-5 w-px bg-line" aria-hidden="true" />
+            {/* Decorative only — the first thing to go when space is genuinely tight. */}
+            <div className="hidden h-5 w-px bg-line sm:block" aria-hidden="true" />
             <NavLink to="/wallet" className={FOCUS_RING} aria-label={isPremium ? 'Wallet — Premium plan' : 'Wallet — Free plan'}>
               <Badge variant="outline" className="cursor-pointer transition-colors hover:border-accent/40 hover:text-ink">
                 <Wallet className="size-3.5" strokeWidth={1.75} />

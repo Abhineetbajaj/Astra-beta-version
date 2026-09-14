@@ -14,7 +14,9 @@ import { useCallback, useEffect, useRef, useState } from 'react'
 import { motion } from 'framer-motion'
 import { supabase } from '@/lib/supabaseClient'
 import { callEdgeFunction } from '@/lib/edgeFunctions'
-import AstraOrb, { type OrbState } from '@/components/astrologer/AstraOrb'
+import { type OrbState } from '@/components/astrologer/AstraOrb'
+import AstraField from '@/components/astrologer/AstraField'
+import HeroVisual from '@/components/astrologer/HeroVisual'
 import VoiceControl from '@/components/astrologer/VoiceControl'
 import ConversationView, { type Turn } from '@/components/astrologer/ConversationView'
 import TextComposer from '@/components/astrologer/TextComposer'
@@ -256,26 +258,36 @@ export default function AstrologerPage() {
   const hasConversation = turns.length > 0
 
   return (
-    <div className="mx-auto max-w-2xl">
+    <div className="relative mx-auto max-w-2xl">
+      {/* Cinematic layer, behind everything and load-deferred. Only shown before a conversation
+          starts — once there are answers to read, the page belongs to the text. */}
+      {!hasConversation && <HeroVisual className="h-[78vh] min-h-[560px]" />}
+      {/* 01 — ARRIVAL. The headline leads, the field answers it. Both retreat once there's a
+          conversation to read, so the answer becomes the page. */}
       <motion.div
         initial={{ opacity: 0, y: 10 }}
         animate={{ opacity: 1, y: 0 }}
         transition={{ duration: 0.5, ease: [0.16, 1, 0.3, 1] }}
         className="flex flex-col items-center text-center"
       >
-        <AstraOrb state={orbState} className="size-32 sm:size-40" />
-
         {!hasConversation && (
           <>
-            <h1 className="mt-7 font-display text-3xl leading-tight text-ink sm:text-4xl">Astra AI</h1>
-            <p className="mt-2 text-base text-ink-muted">Your chart. Your questions.</p>
-            <p className="mt-4 max-w-sm text-sm text-ink-faint">
-              Ask me what's changing, what's favourable, or what deserves your attention.
+            <p className="text-[11px] font-semibold uppercase tracking-[0.22em] text-ink-faint">
+              Personal astrologer
+            </p>
+            <h1 className="mt-5 font-display leading-[0.95] tracking-tight text-ink [font-size:clamp(2.75rem,11vw,4.5rem)]">
+              Your chart.
+              <br />
+              Your questions.
+            </h1>
+            <p className="mt-5 max-w-xs text-[15px] leading-relaxed text-ink-muted sm:max-w-sm">
+              Talk to Astra about what's shaping your life.
             </p>
           </>
         )}
 
-        <div className="mt-8">
+        {/* 02 — THE FIELD. The microphone lives inside the system, not beside it. */}
+        <AstraField state={orbState} compact={hasConversation} className={hasConversation ? 'mt-0' : 'mt-10'}>
           <VoiceControl
             onRecorded={askByVoice}
             onError={(message) => {
@@ -286,7 +298,7 @@ export default function AstrologerPage() {
             recording={recording}
             onRecordingChange={setRecording}
           />
-        </div>
+        </AstraField>
 
         {status && (
           <motion.p
@@ -316,7 +328,7 @@ export default function AstrologerPage() {
       </motion.div>
 
       {hasConversation && (
-        <div className="mt-10 border-t border-line pt-8">
+        <div className="mt-6 border-t border-line pt-7">
           <ConversationView
             turns={turns}
             speech={speech}
@@ -349,9 +361,24 @@ export default function AstrologerPage() {
         />
 
         <TextComposer onSubmit={(q) => void askByText(q)} disabled={busy || state === 'speaking'} />
-
-        <p className="text-center text-xs text-ink-faint">Grounded in your chart</p>
       </div>
+
+      {/* 03 — GROUNDED. The one thing that separates Astra from a chatbot, stated once and quietly.
+          These are the real inputs the backend reads; no counts, no claims, no invented data. */}
+      {!hasConversation && (
+        <div className="mt-14 border-t border-line pt-8">
+          <p className="text-center text-[11px] font-semibold uppercase tracking-[0.18em] text-ink-faint">
+            Grounded in your chart
+          </p>
+          <div className="mt-5 flex flex-wrap items-center justify-center gap-x-8 gap-y-3 text-sm text-ink-muted">
+            <span>Birth chart</span>
+            <span aria-hidden="true" className="size-1 rounded-full bg-line-strong" />
+            <span>Current dasha</span>
+            <span aria-hidden="true" className="size-1 rounded-full bg-line-strong" />
+            <span>Current transits</span>
+          </div>
+        </div>
+      )}
     </div>
   )
 }
