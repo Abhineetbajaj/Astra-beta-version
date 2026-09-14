@@ -33,11 +33,14 @@ const FIELD_STATE: Record<
   OrbState,
   { outer: string; inner: string; ringOpacity: number; coreScale: number; glow: number; breathe: boolean }
 > = {
-  idle: { outer: 'orbit-ambient', inner: 'orbit-medium', ringOpacity: 0.28, coreScale: 1, glow: 0.16, breathe: true },
-  listening: { outer: 'orbit-medium', inner: 'orbit-spin', ringOpacity: 0.7, coreScale: 1.1, glow: 0.4, breathe: true },
-  processing: { outer: 'orbit-medium', inner: 'orbit-medium', ringOpacity: 0.48, coreScale: 0.94, glow: 0.24, breathe: false },
-  speaking: { outer: 'orbit-ambient', inner: 'orbit-medium', ringOpacity: 0.58, coreScale: 1.05, glow: 0.34, breathe: true },
-  error: { outer: '', inner: '', ringOpacity: 0.16, coreScale: 0.9, glow: 0.08, breathe: false },
+  // Glow is deliberately low now: the cinematic layer behind supplies the luminosity, and a strong
+  // glow here flattened it into an orange wash that hid the orbital detail entirely. This layer's
+  // job is structure and state — rings and the travelling dot — not brightness.
+  idle: { outer: 'orbit-ambient', inner: 'orbit-medium', ringOpacity: 0.36, coreScale: 1, glow: 0.05, breathe: true },
+  listening: { outer: 'orbit-medium', inner: 'orbit-spin', ringOpacity: 0.85, coreScale: 1.08, glow: 0.15, breathe: true },
+  processing: { outer: 'orbit-medium', inner: 'orbit-medium', ringOpacity: 0.56, coreScale: 0.94, glow: 0.08, breathe: false },
+  speaking: { outer: 'orbit-ambient', inner: 'orbit-medium', ringOpacity: 0.68, coreScale: 1.04, glow: 0.11, breathe: true },
+  error: { outer: '', inner: '', ringOpacity: 0.16, coreScale: 0.9, glow: 0.03, breathe: false },
 }
 
 interface AstraFieldProps {
@@ -66,7 +69,7 @@ export default function AstraField({ state, compact = false, children, className
         // Compact is tighter than it looks it needs to be: the field is square, so most of its
         // height is empty space around an 80px control. Shrinking it is what removes the dead gap
         // above the conversation without deleting the breathing room entirely.
-        compact ? 'max-w-[168px] sm:max-w-[184px]' : 'max-w-[340px] sm:max-w-[460px]',
+        compact ? 'max-w-[168px] sm:max-w-[184px]' : 'max-w-[440px] sm:max-w-[600px]',
         className,
       )}
     >

@@ -67,7 +67,7 @@ export default function HeroVisual({ className }: { className?: string }) {
           onError={() => setReady(false)}
           className={cn(
             'absolute inset-0 size-full object-cover object-center transition-opacity duration-1000',
-            ready ? 'opacity-90' : 'opacity-0',
+            ready ? 'opacity-100' : 'opacity-0',
           )}
         >
           <source src={SRC_WEBM} type="video/webm" />
@@ -75,11 +75,19 @@ export default function HeroVisual({ className }: { className?: string }) {
         </video>
       )}
 
-      {/* Protects text where text actually is — heavy at the top behind the headline and at the
-          bottom behind the controls, opening up through the middle band where the orbital
-          structure reads and nothing needs to stay legible. A uniform scrim dimmed the asset to
-          the point of invisibility. */}
-      <div className="absolute inset-0 bg-gradient-to-b from-paper/85 via-paper/25 to-paper/95" />
+      {/* Two scrims doing different jobs, rather than one flat wash that dimmed the asset into
+          near-invisibility. The vertical pass protects the headline at the top and the controls at
+          the bottom; the radial pass keeps the centre clear, which is exactly where the celestial
+          architecture sits and where nothing needs to stay legible. */}
+      <div className="absolute inset-0 bg-gradient-to-b from-paper/80 via-transparent to-paper/90" />
+      <div
+        className="absolute inset-0"
+        style={{
+          background:
+            'radial-gradient(ellipse 60% 55% at 50% 48%, transparent 0%, transparent 42%, var(--color-paper) 100%)',
+          opacity: 0.55,
+        }}
+      />
     </div>
   )
 }

@@ -141,7 +141,17 @@ export default function VoiceControl({
   }
 
   return (
-    <div className="flex flex-col items-center gap-3">
+    <div className="relative flex flex-col items-center gap-3">
+      {/* Concentric halo. Sits behind the control and scales with state, so the button reads as the
+          lit core of the surrounding orbital system rather than a circle parked on top of it. */}
+      <span
+        aria-hidden="true"
+        className={cn(
+          'pointer-events-none absolute left-1/2 top-0 -z-10 -translate-x-1/2 rounded-full blur-xl transition-all duration-500 ease-out',
+          recording ? 'size-40 bg-accent/45 sm:size-48' : 'size-28 bg-accent/20 sm:size-32',
+        )}
+        style={{ marginTop: recording ? '-1.5rem' : '-0.5rem' }}
+      />
       <button
         type="button"
         disabled={disabled}
@@ -169,15 +179,32 @@ export default function VoiceControl({
         onContextMenu={(e) => e.preventDefault()}
         aria-label={recording ? 'Release to send your question' : 'Hold to speak to Astra'}
         className={cn(
-          'touch-none select-none rounded-full transition-all duration-300 ease-out',
+          'group relative touch-none select-none rounded-full transition-all duration-300 ease-out',
           'focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-accent/50 focus-visible:ring-offset-2 focus-visible:ring-offset-paper',
           'disabled:pointer-events-none disabled:opacity-40',
+          'size-20 sm:size-24',
           recording
-            ? 'size-20 scale-105 bg-accent text-accent-ink shadow-[0_18px_40px_-16px_color-mix(in_srgb,var(--color-accent)_70%,transparent)] sm:size-24'
-            : 'size-20 bg-ink text-paper hover:-translate-y-0.5 hover:bg-ink/85 sm:size-24',
+            ? 'scale-[1.06] bg-accent text-accent-ink ring-1 ring-accent shadow-[0_0_46px_-6px_color-mix(in_srgb,var(--color-accent)_75%,transparent)]'
+            : // A dark core with a lit edge, not a pale disc. Against the warm field behind it a
+              // translucent light surface went muddy and the icon lost contrast; recessing the
+              // centre makes it read as the still point the rings orbit around.
+              'bg-paper/85 text-ink ring-1 ring-accent/45 backdrop-blur-md hover:-translate-y-0.5 hover:ring-accent/70 shadow-[0_0_40px_-8px_color-mix(in_srgb,var(--color-accent)_50%,transparent)]',
         )}
       >
-        <Mic className="mx-auto size-7 sm:size-8" strokeWidth={1.75} />
+        <span
+          aria-hidden="true"
+          className={cn(
+            'absolute inset-[3px] rounded-full transition-opacity duration-500',
+            recording ? 'opacity-0' : 'opacity-100',
+          )}
+          style={{
+            background: 'radial-gradient(circle at 50% 42%, color-mix(in srgb, var(--color-accent) 26%, transparent), transparent 68%)',
+          }}
+        />
+        <Mic
+          className={cn('relative mx-auto size-7 transition-colors sm:size-8', !recording && 'text-accent')}
+          strokeWidth={1.75}
+        />
       </button>
       <p className="text-sm text-ink-muted">{recording ? 'Release to send' : 'Hold to speak'}</p>
     </div>

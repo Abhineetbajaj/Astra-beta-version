@@ -36,6 +36,14 @@ type PageState = 'idle' | 'listening' | 'processing' | 'speaking' | 'error'
 
 const OPENING_TOPICS = ['Career', 'Money', 'Love', 'Timing'] as const
 
+/** Natural-language openers shown beneath the topic chips. Selecting one submits it as the user's
+    own question through the same text path — nothing is ever rendered as though they asked it. */
+const OPENING_PROMPTS = [
+  "What's favourable right now?",
+  'What is this phase teaching me?',
+  'What should I avoid?',
+] as const
+
 const FOLLOW_UPS = [
   'What about the next 6 months?',
   'What should I avoid?',
@@ -287,7 +295,7 @@ export default function AstrologerPage() {
         )}
 
         {/* 02 — THE FIELD. The microphone lives inside the system, not beside it. */}
-        <AstraField state={orbState} compact={hasConversation} className={hasConversation ? 'mt-0' : 'mt-10'}>
+        <AstraField state={orbState} compact={hasConversation} className={hasConversation ? "mt-0" : "mt-6"}>
           <VoiceControl
             onRecorded={askByVoice}
             onError={(message) => {
@@ -296,7 +304,15 @@ export default function AstrologerPage() {
             }}
             disabled={busy || state === 'speaking'}
             recording={recording}
-            onRecordingChange={setRecording}
+            onRecordingChange={(rec) => {
+              setRecording(rec)
+              // Starting to speak is a new attempt: drop whatever failed last time so the user
+              // isn't talking over a stale error message.
+              if (rec) {
+                setError(null)
+                setState((s) => (s === 'error' ? 'idle' : s))
+              }
+            }}
           />
         </AstraField>
 
@@ -311,7 +327,9 @@ export default function AstrologerPage() {
           </motion.p>
         )}
 
-        {error && (
+        {/* Bound to the state machine, not just to `error` being non-null. Previously a message
+            could outlive the state that produced it and linger over an otherwise healthy page. */}
+        {state === 'error' && error && (
           <div className="mt-5 w-full rounded-2xl border border-negative/30 bg-negative/5 px-4 py-3">
             <p className="text-sm text-negative">{error}</p>
             <button
@@ -360,17 +378,35 @@ export default function AstrologerPage() {
           label={hasConversation ? 'Ask a follow-up' : 'Try asking'}
         />
 
+        {/* A second, quieter tier: full questions rather than categories, for anyone who would
+            rather pick a thought than a topic. Same real text path as everything else. */}
+        {!hasConversation && (
+          <div className="flex flex-col items-start gap-1.5">
+            {OPENING_PROMPTS.map((q) => (
+              <button
+                key={q}
+                type="button"
+                disabled={busy || state === 'speaking'}
+                onClick={() => void askByText(q)}
+                className="rounded text-left text-sm text-ink-faint underline-offset-4 transition-colors hover:text-ink-muted hover:underline disabled:pointer-events-none disabled:opacity-40 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-accent/50 focus-visible:ring-offset-2 focus-visible:ring-offset-paper"
+              >
+                {q}
+              </button>
+            ))}
+          </div>
+        )}
+
         <TextComposer onSubmit={(q) => void askByText(q)} disabled={busy || state === 'speaking'} />
       </div>
 
       {/* 03 — GROUNDED. The one thing that separates Astra from a chatbot, stated once and quietly.
           These are the real inputs the backend reads; no counts, no claims, no invented data. */}
       {!hasConversation && (
-        <div className="mt-14 border-t border-line pt-8">
+        <div className="mt-9 pt-2">
           <p className="text-center text-[11px] font-semibold uppercase tracking-[0.18em] text-ink-faint">
             Grounded in your chart
           </p>
-          <div className="mt-5 flex flex-wrap items-center justify-center gap-x-8 gap-y-3 text-sm text-ink-muted">
+          <div className="mt-3.5 flex flex-wrap items-center justify-center gap-x-6 gap-y-2.5 text-sm text-ink-muted">
             <span>Birth chart</span>
             <span aria-hidden="true" className="size-1 rounded-full bg-line-strong" />
             <span>Current dasha</span>
